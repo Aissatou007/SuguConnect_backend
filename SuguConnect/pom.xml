@@ -12,7 +12,7 @@
 	<artifactId>SuguConnect</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>SuguConnect</name>
-	<description>Demo project for Spring Boot</description>
+	<description> Projet de mise en relation entre producteur et consommateur</description>
 	<url/>
 	<licenses>
 		<license/>
