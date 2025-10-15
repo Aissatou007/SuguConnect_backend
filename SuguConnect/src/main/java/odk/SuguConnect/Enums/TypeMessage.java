@@ -1,0 +1,32 @@
+package odk.SuguConnect.Enums;
+
+public enum TypeMessage {
+    COMMANDE_PASSEE,
+    COMMANDE_VALIDEE,
+    COMMANDE_REFUSEE,
+    COMMANDE_EN_LIVRAISON,
+    COMMANDE_LIVREE,
+    COMMANDE_ANNULEE,
+
+    // Paiement
+    PAIEMENT_REUSSI,
+    PAIEMENT_ECHOUE,
+    REMBOURSEMENT_EFFECTUE,
+    REVENU_PRODUCTEUR,
+
+    // Producteur
+    COMPTE_VALIDE,
+    COMPTE_REFUSE,
+    STOCK_FAIBLE,
+    PRODUIT_EPUISÉ,
+
+    // Consommateur
+    AVIS_DEMANDE,
+    NOUVEAU_PRODUIT,
+    PROMOTION,
+
+    // Système / Admin
+    INFO_SYSTEME,
+    ALERTE_SECURITE,
+    MESSAGE_ADMIN
+}
