@@ -1,6 +1,6 @@
 package odk.SuguConnect.Enums;
 
-public enum Mode {
+public enum ModeLivraison {
     VIA_PLATFORM ,
     VIA_CONSOMMATEUR
 }
