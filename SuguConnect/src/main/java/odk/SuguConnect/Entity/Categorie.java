@@ -3,7 +3,7 @@ package odk.SuguConnect.Entity;
 import jakarta.persistence.*;
 
 import java.util.List;
-
+@Entity
 public class Categorie {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

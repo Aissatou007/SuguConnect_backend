@@ -5,20 +5,22 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import odk.SuguConnect.Enums.ModeLivraison;
-import odk.SuguConnect.Enums.StatutLivraison;
 
 @Entity
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class Livraison {
+public class CommandeProduit {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id ;
-    private ModeLivraison modeLivraison;
-    private StatutLivraison statutLivraison ;
-    @OneToOne
+    @ManyToOne
+    @JoinColumn(name = "produit_id")
+    private Produit produit;
+    @ManyToOne
+    @JoinColumn(name = "commande_id")
     private Commande commande;
+    private int quantite;
+    private float prix;
 }
