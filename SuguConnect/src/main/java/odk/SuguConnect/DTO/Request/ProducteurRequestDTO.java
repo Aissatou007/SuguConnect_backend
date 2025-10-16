@@ -6,9 +6,10 @@ public record ProducteurRequestDTO(
         String prenom,
         String telephone,
         String email ,
-        String localisation
-
-
-
+        String localisation,
+        long latitude ,
+        long longitude ,
+        String motDePasse,
+        String description
 ) {
 }
