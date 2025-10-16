@@ -2,10 +2,11 @@ package odk.SuguConnect.DTO.Responses;
 
 import odk.SuguConnect.Entity.Panier;
 import odk.SuguConnect.Enums.Role;
+import odk.SuguConnect.Enums.StatutProducteur;
 
 import java.time.LocalDate;
 
-public record ConsommateurResponseDTO(
+public record ProducteurResponseDTO(
         int id ,
         String nom ,
         String prenom ,
@@ -15,7 +16,8 @@ public record ConsommateurResponseDTO(
         long latitude ,
         long longitude ,
         Role role ,
-        Panier panier,
+        StatutProducteur statutProducteur ,
+        String description,
         LocalDate dateInscription
-        ) {
+) {
 }

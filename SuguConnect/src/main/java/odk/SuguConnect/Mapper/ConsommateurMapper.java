@@ -30,6 +30,7 @@ public class ConsommateurMapper {
                 consommateur.getLattitude(),
                 consommateur.getLongitude(),
                 consommateur.getRole(),
+                consommateur.getPanier(),
                 consommateur.getDateInscription()
         );
         return consommateurResponseDTO;
