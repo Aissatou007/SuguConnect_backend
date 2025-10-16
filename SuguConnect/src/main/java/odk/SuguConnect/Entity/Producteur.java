@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import odk.SuguConnect.Enums.StatutProducteur;
 import odk.SuguConnect.Interface.Utilisateur;
 
 import java.util.List;
@@ -17,6 +18,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class Producteur extends Utilisateur {
+    private StatutProducteur statutProducteur;
     private String desription ;
     @OneToMany(mappedBy = "producteur" , cascade = CascadeType.ALL)
    private List<Produit> produits;
