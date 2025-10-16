@@ -1,11 +1,21 @@
 package odk.SuguConnect.Interface;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import odk.SuguConnect.Enums.Role;
 import odk.SuguConnect.Enums.StatutUtilisateur;
 
 import java.time.LocalDate;
 import java.util.Date;
+
+@Getter
+@Setter
+@Entity
+@AllArgsConstructor
+@NoArgsConstructor
 @Inheritance(strategy = InheritanceType.JOINED)
 public abstract class Utilisateur {
     @Id
@@ -18,8 +28,10 @@ public abstract class Utilisateur {
     private String localisation ;
     private long longitude ;
     private long lattitude ;
+    @Enumerated(EnumType.STRING)
     private Role role ;
     private String motDePasse ;
     private LocalDate dateInscription ;
-    private StatutUtilisateur statutUtilisateur;
+
+
 }
