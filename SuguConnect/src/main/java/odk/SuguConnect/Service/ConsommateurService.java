@@ -58,4 +58,5 @@ public class ConsommateurService {
         consommateurRepository.delete(consommateur);
         return "Le compte a été supprimer avec succès";
     }
+
 }

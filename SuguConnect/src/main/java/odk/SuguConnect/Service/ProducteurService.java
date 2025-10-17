@@ -19,7 +19,7 @@ public class ProducteurService {
     private ProducteurResponseDTO producteurResponseDTO;
 
     //Inscription d'un producteur
-    public String inscriptionConsommateur(ProducteurRequestDTO producteurRequestDTO, String telephone){
+    public String inscriptionProducteur(ProducteurRequestDTO producteurRequestDTO, String telephone){
         Producteur producteur =  producteurRepository.findByTelephone(telephone);
         if (producteur != null){
             throw new IllegalArgumentException("Ce compte existe déjà");
