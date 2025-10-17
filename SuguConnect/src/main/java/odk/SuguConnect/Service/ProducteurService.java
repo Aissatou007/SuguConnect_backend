@@ -4,11 +4,12 @@ import jakarta.persistence.EntityNotFoundException;
 import odk.SuguConnect.DTO.Request.ProducteurRequestDTO;
 import odk.SuguConnect.DTO.Responses.ProducteurResponseDTO;
 import odk.SuguConnect.Entity.Producteur;
+import odk.SuguConnect.Entity.Produit;
 import odk.SuguConnect.Enums.Role;
 import odk.SuguConnect.Enums.StatutProducteur;
 import odk.SuguConnect.Mapper.ProducteurMapper;
 import odk.SuguConnect.Repository.ProducteurRepository;
-
+import odk.SuguConnect.Repository.ProduitRepository;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -17,6 +18,7 @@ public class ProducteurService {
     private ProducteurRepository producteurRepository ;
     private ProducteurRequestDTO producteurRequestDTO ;
     private ProducteurResponseDTO producteurResponseDTO;
+    private ProduitRepository produitRepository;
 
     //Inscription d'un producteur
     public String inscriptionProducteur(ProducteurRequestDTO producteurRequestDTO, String telephone){
@@ -60,4 +62,15 @@ public class ProducteurService {
         producteurRepository.delete(producteur);
         return "Le compte a été supprimer avec succès";
     }
+
+    public String ajouterProduit(Produit produit , int producteurId){
+        Producteur producteur = producteurRepository.findById(producteurId)
+                .orElseThrow(() -> new EntityNotFoundException("Ce producteur n'existe pas"));
+        produit.setProducteur(producteur);
+        produit.setStockDisponible(produit.getQuantite());
+        produitRepository.save(produit);
+        return "le produit '" +produit.getNom() + "' ajouter avec succès";
+    }
+
 }
+
