@@ -24,6 +24,9 @@ public class Produit {
     private Unite unite ;
     private int stockDisponible ;
     @ManyToOne
+    @JoinColumn(name = "producteur_id")
+    private Producteur producteur;
+    @ManyToOne
     @JoinColumn(name = "categorie_id")
     private Categorie categorie;
     @ManyToMany
