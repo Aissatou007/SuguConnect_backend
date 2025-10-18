@@ -4,6 +4,7 @@ import jakarta.persistence.EntityNotFoundException;
 import odk.SuguConnect.DTO.Request.ConsommateurRequestDTO;
 import odk.SuguConnect.DTO.Responses.ConsommateurResponseDTO;
 import odk.SuguConnect.Entity.Consommateur;
+import odk.SuguConnect.Entity.Panier;
 import odk.SuguConnect.Enums.Role;
 import odk.SuguConnect.Mapper.ConsommateurMapper;
 import odk.SuguConnect.Repository.ConsommateurRepository;
@@ -27,6 +28,9 @@ public class ConsommateurService {
         Consommateur consommateur = ConsommateurMapper.toEntity(consommateurRequestDTO,new Consommateur());
         consommateur.setRole(Role.CONSOMMATEUR);
         consommateur.setDateInscription(LocalDate.now());
+        Panier panier = new Panier();
+        panier.setConsommateur(consommateur);
+        consommateur.setPanier(panier);
         consommateurRepository.save(consommateur);
         return "Soyez le bienvenue ";
     }

@@ -6,13 +6,14 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.util.List;
-
-@Entity
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
+@Entity
 public class Panier {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id ;
     @OneToOne
     private Consommateur consommateur;
