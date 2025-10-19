@@ -19,7 +19,7 @@ public class Consommateur extends Utilisateur {
     private Panier panier ;
    @OneToMany(mappedBy = "consommateur" , cascade = CascadeType.ALL)
     private List<Paiement> paiements ;
-  @ManyToOne
+  @ManyToMany
   @JoinTable(
           name = "favoris",
           joinColumns = @JoinColumn(name = "consommateur_id"),
