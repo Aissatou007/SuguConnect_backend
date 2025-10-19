@@ -40,4 +40,6 @@ public class Produit {
     private List<CommandeProduit>commandeProduitList ;
     @ManyToMany(mappedBy = "produit")
     private List<Consommateur> consommateurs;
+    @OneToMany(mappedBy = "produit" , cascade = CascadeType.ALL)
+    private List<PanierProduit> panierProduits ;
 }

@@ -7,6 +7,9 @@ import odk.SuguConnect.Entity.Admin;
 import odk.SuguConnect.Enums.Role;
 import odk.SuguConnect.Mapper.AdminMapper;
 import odk.SuguConnect.Repository.AdminRepository;
+import odk.SuguConnect.Repository.CommandeRepository;
+import odk.SuguConnect.Repository.PaiementRepository;
+import odk.SuguConnect.Repository.ProducteurRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -14,9 +17,17 @@ import java.util.List;
 
 @Service
 public class AdminService {
-    private AdminRepository adminRepository ;
-    private AdminRequestDTO adminRequestDTO;
-    private AdminResponseDTO adminResponseDTO;
+    private final AdminRepository adminRepository ;
+    private final ProducteurRepository producteurRepository;
+    private final CommandeRepository commandeRepository;
+    private final PaiementRepository paiementRepository;
+
+    public AdminService(AdminRepository adminRepository, ProducteurRepository producteurRepository, CommandeRepository commandeRepository, PaiementRepository paiementRepository) {
+        this.adminRepository = adminRepository;
+        this.producteurRepository = producteurRepository;
+        this.commandeRepository = commandeRepository;
+        this.paiementRepository = paiementRepository;
+    }
 
     public String inscriptionAdmin(AdminRequestDTO adminRequestDTO , String telephone){
         Admin u = adminRepository.findByTelephone(telephone);
