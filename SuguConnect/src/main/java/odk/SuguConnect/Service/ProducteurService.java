@@ -56,7 +56,7 @@ public class ProducteurService {
         List<Producteur> producteurs = producteurRepository.findAll();
         return producteurs.stream().map(ProducteurMapper::toResponse).toList();
     }
-    //Voir les info d'un seul producteur
+    //Voir les informations d'un seul producteur
     public ProducteurResponseDTO recupererUnProducteur(int id){
         Producteur producteur = producteurRepository.findById(id).orElseThrow(()
                 -> new EntityNotFoundException("Ce producteur n'a pas de compte"));

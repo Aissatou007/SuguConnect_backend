@@ -9,6 +9,7 @@ import odk.SuguConnect.Entity.Produit;
 import odk.SuguConnect.Enums.Role;
 import odk.SuguConnect.Mapper.ConsommateurMapper;
 import odk.SuguConnect.Repository.ConsommateurRepository;
+import odk.SuguConnect.Repository.PanierRepository;
 import odk.SuguConnect.Repository.ProduitRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,10 +21,12 @@ import java.util.List;
 public class ConsommateurService {
     private final ConsommateurRepository  consommateurRepository;
     private final ProduitRepository produitRepository;
+    private final PanierRepository panierRepository;
 
-    public ConsommateurService(ConsommateurRepository consommateurRepository, ProduitRepository produitRepository) {
+    public ConsommateurService(ConsommateurRepository consommateurRepository, ProduitRepository produitRepository , PanierRepository panierRepository) {
         this.consommateurRepository = consommateurRepository;
         this.produitRepository = produitRepository;
+        this.panierRepository = panierRepository;
     }
 
 
@@ -78,6 +81,26 @@ public class ConsommateurService {
         return produitsDisponibles;
     }
 
+    @Transactional
+    public  String ajouterProduitAuPanier( int consommateurId , int produitId , int quantite){
+            Consommateur consommateur = consommateurRepository.findById(consommateurId)
+                    .orElseThrow(()->new EntityNotFoundException("consommateur introuvable"));
+            Panier panier = consommateur.getPanier();
+            if(panier == null){
+                panier = new Panier();
+                panier.setConsommateur(consommateur);
+                consommateur.setPanier(panier);
+            }
+            Produit produit = produitRepository.findById(produitId)
+                    .orElseThrow(()->new EntityNotFoundException("Produit introuvable"));
+            if(produit.getStockDisponible()< quantite){
+                throw new IllegalArgumentException("Stock insuffisant pour ce produit ");
+            }
+            panier.getProduits().add(produit);
+            produit.setStockDisponible(produit.getStockDisponible() - quantite);
+            panierRepository.save(panier);
+            return "Produit"+produit.getNom()+" ajouter à votre panier";
+    }
 
 
 }
