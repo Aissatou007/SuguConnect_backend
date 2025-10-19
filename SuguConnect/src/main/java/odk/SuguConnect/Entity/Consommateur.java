@@ -19,6 +19,8 @@ public class Consommateur extends Utilisateur {
     private Panier panier ;
    @OneToMany(mappedBy = "consommateur" , cascade = CascadeType.ALL)
     private List<Paiement> paiements ;
+    @OneToMany(mappedBy = "consommateur" , cascade = CascadeType.ALL)
+    private List<Commande> commandes;
   @ManyToMany
   @JoinTable(
           name = "favoris",

@@ -8,6 +8,8 @@ import lombok.Setter;
 import odk.SuguConnect.Enums.ModePaiement;
 import odk.SuguConnect.Enums.StatutPaiement;
 
+import java.time.LocalDate;
+import java.util.Date;
 import java.util.List;
 
 @Entity
@@ -19,7 +21,9 @@ public class Paiement {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int idPaiement ;
-    private float montant ;
+    private double montant ;
+    private LocalDate datePaiement;
+    @Enumerated(EnumType.STRING)
     private ModePaiement methodePaiement ;
     private StatutPaiement statutPaiement ;
     @ManyToOne

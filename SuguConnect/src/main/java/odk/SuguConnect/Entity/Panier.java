@@ -21,4 +21,6 @@ public class Panier {
     @JoinTable(joinColumns = @JoinColumn(name = "panier_id") ,
     inverseJoinColumns = @JoinColumn(name = "produit_id"))
     private List <Produit> produits ;
+    @OneToMany(mappedBy = "panier" , cascade = CascadeType.ALL)
+    private List<PanierProduit> panierProduits ;
 }

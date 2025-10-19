@@ -21,12 +21,17 @@ public class Commande {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int idCommande ;
     @OneToMany(mappedBy = "commande", cascade = CascadeType.ALL)
-    private List<CommandeProduit> listproduits;
-    private float montantTotal ;
+    private List<CommandeProduit> commandeProduits;
+    private Double montantTotal ;
     private StatutCommande statutCommande;
+
+    @Enumerated(EnumType.STRING)
     private ModePaiement modePaiement ;
-    private LocalDate datePaiement ;
+    private LocalDate dateCommande ;
     private String motifRejet ;
+    @ManyToOne
+    @JoinColumn(name = "consommateur")
+    private Consommateur consommateur ;
     @OneToOne
     @JoinColumn(name ="paiement_id")
     private Paiement paiement;
