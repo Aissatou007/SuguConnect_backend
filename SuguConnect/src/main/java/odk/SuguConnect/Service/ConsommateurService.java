@@ -3,14 +3,13 @@ package odk.SuguConnect.Service;
 import jakarta.persistence.EntityNotFoundException;
 import odk.SuguConnect.DTO.Request.ConsommateurRequestDTO;
 import odk.SuguConnect.DTO.Responses.ConsommateurResponseDTO;
-import odk.SuguConnect.Entity.Consommateur;
-import odk.SuguConnect.Entity.Panier;
-import odk.SuguConnect.Entity.Produit;
+import odk.SuguConnect.Entity.*;
+import odk.SuguConnect.Enums.ModePaiement;
 import odk.SuguConnect.Enums.Role;
+import odk.SuguConnect.Enums.StatutCommande;
+import odk.SuguConnect.Enums.StatutPaiement;
 import odk.SuguConnect.Mapper.ConsommateurMapper;
-import odk.SuguConnect.Repository.ConsommateurRepository;
-import odk.SuguConnect.Repository.PanierRepository;
-import odk.SuguConnect.Repository.ProduitRepository;
+import odk.SuguConnect.Repository.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,11 +21,19 @@ public class ConsommateurService {
     private final ConsommateurRepository  consommateurRepository;
     private final ProduitRepository produitRepository;
     private final PanierRepository panierRepository;
+    private final CommandeRepository commandeRepository;
+    private final PaiementRepository paiementRepository;
 
-    public ConsommateurService(ConsommateurRepository consommateurRepository, ProduitRepository produitRepository , PanierRepository panierRepository) {
+    public ConsommateurService(ConsommateurRepository consommateurRepository
+            , ProduitRepository produitRepository
+            , PanierRepository panierRepository
+            ,CommandeRepository commandeRepository
+            ,PaiementRepository paiementRepository) {
         this.consommateurRepository = consommateurRepository;
         this.produitRepository = produitRepository;
         this.panierRepository = panierRepository;
+        this.commandeRepository = commandeRepository;
+        this.paiementRepository = paiementRepository;
     }
 
 
@@ -100,6 +107,60 @@ public class ConsommateurService {
             produit.setStockDisponible(produit.getStockDisponible() - quantite);
             panierRepository.save(panier);
             return "Produit"+produit.getNom()+" ajouter à votre panier";
+    }
+    @Transactional
+    public String retirerProduitDuPanier(int consommateurId , int produitId){
+        Consommateur consommateur = consommateurRepository.findById(consommateurId)
+                .orElseThrow(()-> new EntityNotFoundException("onsommateur introuvable"));
+        Panier panier = consommateur.getPanier();
+        if(panier == null || panier.getProduits().isEmpty()){
+            throw new IllegalArgumentException("votre panier est vide");
+        }
+        panier.getProduits().remove(produitId);
+        panierRepository.save(panier);
+        return "Le produit retiré du panier";
+    }
+    @Transactional
+    public Commande passerCommande(int idConsommateur , ModePaiement modePaiement){
+        Consommateur consommateur = consommateurRepository.findById(idConsommateur)
+                .orElseThrow(()->new EntityNotFoundException("consommateur introuvable"));
+        Panier panier = consommateur.getPanier();
+        if (panier == null || panier.getProduits().isEmpty()){
+            throw new EntityNotFoundException("le panier est vide");
+        }
+        Commande commande = new Commande();
+        commande.setConsommateur(consommateur);
+        commande.setDateCommande(LocalDate.now());
+        commande.setModePaiement(modePaiement);
+        commande.setStatutCommande(StatutCommande.EN_ATTENTE);
+        Double total = 0.0;
+        for(PanierProduit panierProduit : panier.getPanierProduits()){
+            Produit produit = panierProduit.getProduit();
+            if(produit.getStockDisponible()< panierProduit.getQuantite()){
+                throw new IllegalArgumentException("Stock insuffisant");
+            }
+            CommandeProduit commandeProduit = new CommandeProduit();
+            commandeProduit.setCommande(commande);
+            commandeProduit.setProduit(produit);
+            commandeProduit.setQuantite(panierProduit.getQuantite());
+            commandeProduit.setPrixUnitaire(produit.getPrixUnitaire());
+            commande.getCommandeProduits().add(commandeProduit);
+            total += produit.getPrixUnitaire() * panierProduit.getQuantite();
+            panierProduit.setDejaCommande(true);
+        }
+        commande.setMontantTotal(total);
+        commandeRepository.save(commande);
+        Paiement paiement = new Paiement();
+        paiement.setCommande(commande);
+        paiement.setMethodePaiement(modePaiement);
+        paiement.setMontant(total);
+        paiement.setStatutPaiement(StatutPaiement.INITIE);
+        paiement.setDatePaiement(LocalDate.now());
+        paiementRepository.save(paiement);
+        commande.setPaiement(paiement);
+        commandeRepository.save(commande);
+        panierRepository.save(panier);
+        return commande;
     }
 
 
