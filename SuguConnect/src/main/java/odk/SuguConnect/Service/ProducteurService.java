@@ -10,15 +10,20 @@ import odk.SuguConnect.Enums.StatutProducteur;
 import odk.SuguConnect.Mapper.ProducteurMapper;
 import odk.SuguConnect.Repository.ProducteurRepository;
 import odk.SuguConnect.Repository.ProduitRepository;
+import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.List;
+@Service
 
 public class ProducteurService {
-    private ProducteurRepository producteurRepository ;
-    private ProducteurRequestDTO producteurRequestDTO ;
-    private ProducteurResponseDTO producteurResponseDTO;
-    private ProduitRepository produitRepository;
+    private final ProducteurRepository producteurRepository ;
+    private final ProduitRepository produitRepository;
+
+    public ProducteurService(ProducteurRepository producteurRepository, ProduitRepository produitRepository) {
+        this.producteurRepository = producteurRepository;
+        this.produitRepository = produitRepository;
+    }
 
     //Inscription d'un producteur
     public String inscriptionProducteur(ProducteurRequestDTO producteurRequestDTO, String telephone){
@@ -122,7 +127,7 @@ public class ProducteurService {
        if(produit.getProducteur().getId() != producteurId){
            throw new IllegalArgumentException("Vous ne pouvez pas modifier ce produit");
        } produitRepository.delete(produit);
-       return "Le produit " +produit.getNom() +" a été supprimé avec succès";
+       return "Le produit  a ete supprimer";
     }
 
 }

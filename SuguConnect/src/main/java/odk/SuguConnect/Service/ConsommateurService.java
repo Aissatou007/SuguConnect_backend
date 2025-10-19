@@ -5,19 +5,27 @@ import odk.SuguConnect.DTO.Request.ConsommateurRequestDTO;
 import odk.SuguConnect.DTO.Responses.ConsommateurResponseDTO;
 import odk.SuguConnect.Entity.Consommateur;
 import odk.SuguConnect.Entity.Panier;
+import odk.SuguConnect.Entity.Produit;
 import odk.SuguConnect.Enums.Role;
 import odk.SuguConnect.Mapper.ConsommateurMapper;
 import odk.SuguConnect.Repository.ConsommateurRepository;
+import odk.SuguConnect.Repository.ProduitRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
 
 @Service
 public class ConsommateurService {
-    private ConsommateurRepository  consommateurRepository;
-    private ConsommateurRequestDTO consommateurRequestDTO ;
-    private ConsommateurResponseDTO consommateurResponseDTO ;
+    private final ConsommateurRepository  consommateurRepository;
+    private final ProduitRepository produitRepository;
+
+    public ConsommateurService(ConsommateurRepository consommateurRepository, ProduitRepository produitRepository) {
+        this.consommateurRepository = consommateurRepository;
+        this.produitRepository = produitRepository;
+    }
+
 
     //Inscription d'un consommateur
     public String inscriptionConsommateur(ConsommateurRequestDTO consommateurRequestDTO, String telephone){
@@ -62,5 +70,14 @@ public class ConsommateurService {
         consommateurRepository.delete(consommateur);
         return "Le compte a été supprimer avec succès";
     }
+    public List<Produit> voirTousLesProduitsDisponibles(){
+        List<Produit> produitsDisponibles = produitRepository.findAllByStockDisponibleGreaterThan(0);
+        if(produitsDisponibles.isEmpty()){
+            throw new EntityNotFoundException("Aucun produit n'est disponible pour le moment");
+        }
+        return produitsDisponibles;
+    }
+
+
 
 }

@@ -14,7 +14,12 @@ import java.util.Map;
 @RestController
 @RequestMapping(path = "/producteur")
 public class ProducteurController {
-    private ProducteurService producteurService ;
+    private final ProducteurService producteurService ;
+
+    public ProducteurController(ProducteurService producteurService) {
+        this.producteurService = producteurService;
+    }
+
     @PostMapping(path = "/inscription")
     public ResponseEntity<String> inscription(
             @RequestBody ProducteurRequestDTO producteurRequestDTO){
