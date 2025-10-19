@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import odk.SuguConnect.Enums.Unite;
 
+import java.util.ArrayList;
 import java.util.List;
 @Entity
 @Getter
@@ -23,6 +24,10 @@ public class Produit {
     private float prixUnitaire ;
     private Unite unite ;
     private int stockDisponible ;
+    @ElementCollection
+    @CollectionTable(name = "produit_photos", joinColumns = @JoinColumn(name = "produit_id"))
+    @Column(name = "photo_url")
+    private List<String> photos = new ArrayList<>();
     @ManyToOne
     @JoinColumn(name = "producteur_id")
     private Producteur producteur;

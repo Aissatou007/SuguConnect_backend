@@ -4,19 +4,31 @@ import jakarta.persistence.EntityNotFoundException;
 import odk.SuguConnect.DTO.Request.ConsommateurRequestDTO;
 import odk.SuguConnect.DTO.Responses.ConsommateurResponseDTO;
 import odk.SuguConnect.Entity.Consommateur;
+import odk.SuguConnect.Entity.Panier;
+import odk.SuguConnect.Entity.Produit;
 import odk.SuguConnect.Enums.Role;
 import odk.SuguConnect.Mapper.ConsommateurMapper;
 import odk.SuguConnect.Repository.ConsommateurRepository;
+import odk.SuguConnect.Repository.PanierRepository;
+import odk.SuguConnect.Repository.ProduitRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
 
 @Service
 public class ConsommateurService {
-    private ConsommateurRepository  consommateurRepository;
-    private ConsommateurRequestDTO consommateurRequestDTO ;
-    private ConsommateurResponseDTO consommateurResponseDTO ;
+    private final ConsommateurRepository  consommateurRepository;
+    private final ProduitRepository produitRepository;
+    private final PanierRepository panierRepository;
+
+    public ConsommateurService(ConsommateurRepository consommateurRepository, ProduitRepository produitRepository , PanierRepository panierRepository) {
+        this.consommateurRepository = consommateurRepository;
+        this.produitRepository = produitRepository;
+        this.panierRepository = panierRepository;
+    }
+
 
     //Inscription d'un consommateur
     public String inscriptionConsommateur(ConsommateurRequestDTO consommateurRequestDTO, String telephone){
@@ -27,6 +39,9 @@ public class ConsommateurService {
         Consommateur consommateur = ConsommateurMapper.toEntity(consommateurRequestDTO,new Consommateur());
         consommateur.setRole(Role.CONSOMMATEUR);
         consommateur.setDateInscription(LocalDate.now());
+        Panier panier = new Panier();
+        panier.setConsommateur(consommateur);
+        consommateur.setPanier(panier);
         consommateurRepository.save(consommateur);
         return "Soyez le bienvenue ";
     }
@@ -58,5 +73,34 @@ public class ConsommateurService {
         consommateurRepository.delete(consommateur);
         return "Le compte a été supprimer avec succès";
     }
+    public List<Produit> voirTousLesProduitsDisponibles(){
+        List<Produit> produitsDisponibles = produitRepository.findAllByStockDisponibleGreaterThan(0);
+        if(produitsDisponibles.isEmpty()){
+            throw new EntityNotFoundException("Aucun produit n'est disponible pour le moment");
+        }
+        return produitsDisponibles;
+    }
+
+    @Transactional
+    public  String ajouterProduitAuPanier( int consommateurId , int produitId , int quantite){
+            Consommateur consommateur = consommateurRepository.findById(consommateurId)
+                    .orElseThrow(()->new EntityNotFoundException("consommateur introuvable"));
+            Panier panier = consommateur.getPanier();
+            if(panier == null){
+                panier = new Panier();
+                panier.setConsommateur(consommateur);
+                consommateur.setPanier(panier);
+            }
+            Produit produit = produitRepository.findById(produitId)
+                    .orElseThrow(()->new EntityNotFoundException("Produit introuvable"));
+            if(produit.getStockDisponible()< quantite){
+                throw new IllegalArgumentException("Stock insuffisant pour ce produit ");
+            }
+            panier.getProduits().add(produit);
+            produit.setStockDisponible(produit.getStockDisponible() - quantite);
+            panierRepository.save(panier);
+            return "Produit"+produit.getNom()+" ajouter à votre panier";
+    }
+
 
 }

@@ -1,8 +1,6 @@
 package odk.SuguConnect.Entity;
 
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Entity;
-import jakarta.persistence.OneToMany;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -18,6 +16,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class Producteur extends Utilisateur {
+    @Enumerated(EnumType.STRING)
     private StatutProducteur statutProducteur;
     private String desription ;
     @OneToMany(mappedBy = "producteur" , cascade = CascadeType.ALL)

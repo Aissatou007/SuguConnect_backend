@@ -27,5 +27,8 @@ public class Commande {
     private ModePaiement modePaiement ;
     private LocalDate datePaiement ;
     private String motifRejet ;
+    @OneToOne
+    @JoinColumn(name ="paiement_id")
+    private Paiement paiement;
 
 }
