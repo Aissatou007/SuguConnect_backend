@@ -19,10 +19,11 @@ import java.util.List;
 public class ProducteurService {
     private final ProducteurRepository producteurRepository ;
     private final ProduitRepository produitRepository;
-
-    public ProducteurService(ProducteurRepository producteurRepository, ProduitRepository produitRepository) {
+    private final ProduitService produitService;
+    public ProducteurService(ProducteurRepository producteurRepository, ProduitRepository produitRepository, ProduitService produitService) {
         this.producteurRepository = producteurRepository;
         this.produitRepository = produitRepository;
+        this.produitService = produitService;
     }
 
     //Inscription d'un producteur
@@ -85,48 +86,17 @@ public class ProducteurService {
         return "Le compte a été supprimer avec succès";
     }
 
-    public String ajouterProduit(Produit produit , int producteurId){
-        Producteur producteur = producteurRepository.findById(producteurId)
-                .orElseThrow(() -> new EntityNotFoundException("Ce producteur n'existe pas"));
-        if(producteur.getStatutProducteur() != StatutProducteur.ACCEPTER){
-            throw new IllegalStateException("Vous n'avez pas de droit pour ajouter un produit");
-        }
-        if(produit.getPhotos().isEmpty()){
-            throw new IllegalArgumentException("Le produit doit contenir au moins une photo");
-        }
-        if(produit.getPhotos().size() > 4){
-            throw new IllegalArgumentException("Le produit ne peux pas avoir plus de 4 photos");
-        }
-        produit.setProducteur(producteur);
-        produit.setStockDisponible(produit.getQuantite());
-        produitRepository.save(produit);
-        return "le produit '" +produit.getNom() + "' ajouter avec succès";
+    public Produit ajouterProduit(Produit produit , int producteurId){
+        return produitService.ajouterProduit(produit , producteurId);
     }
-    public String modifierProduit(Produit produitModifie , int produitId , int producteurId){
-        Produit produit = produitRepository.findById(produitId)
-                .orElseThrow(() -> new EntityNotFoundException("Ce produit n'existe pas"));
-        if(produit.getProducteur().getId() != producteurId){
-            throw new SecurityException("Vous ne pouvez pas modifier ce produit");
-        }produit.setNom(produitModifie.getNom());
-        produit.setQuantite(produitModifie.getQuantite());
-        produit.setDescription(produitModifie.getDescription());
-        produit.setPrixUnitaire(produitModifie.getPrixUnitaire());
-        produit.setUnite(produitModifie.getUnite());
-        produit.setStockDisponible(produitModifie.getQuantite());
-        produitRepository.save(produitModifie);
-        return "Le produit a été modifié avec succès";
+    public Produit modifierProduit(Produit produitModifie , int produitId , int producteurId){
+       return produitService.modifierProduit(produitModifie, produitId , producteurId);
     }
     public List<Produit> listerLesProduits(int producteurId){
-        Producteur producteur = producteurRepository.findById(producteurId)
-                .orElseThrow(()->new EntityNotFoundException("Ce producteur n'existe pas"));
-        return produitRepository.findByProducteur(producteur);
+        return produitService.listerLesProduits(producteurId);
     }
     public String supprimerProduit(int produitId , int producteurId){
-       Produit produit = produitRepository.findById(produitId)
-               .orElseThrow(()->new EntityNotFoundException("Ce produit n'existe pas"));
-       if(produit.getProducteur().getId() != producteurId){
-           throw new IllegalArgumentException("Vous ne pouvez pas modifier ce produit");
-       } produitRepository.delete(produit);
+       produitService.supprimerProduit(produitId,producteurId);
        return "Le produit  a ete supprimer";
     }
 
