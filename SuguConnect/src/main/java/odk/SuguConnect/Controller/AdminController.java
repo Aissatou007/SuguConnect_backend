@@ -2,6 +2,8 @@ package odk.SuguConnect.Controller;
 
 import odk.SuguConnect.DTO.Request.AdminRequestDTO;
 import odk.SuguConnect.DTO.Responses.AdminResponseDTO;
+import odk.SuguConnect.Entity.*;
+import odk.SuguConnect.Enums.StatutProducteur;
 import odk.SuguConnect.Service.AdminService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,10 +16,10 @@ public class AdminController {
     private AdminService adminService;
 
     @PostMapping(path = "/inscription")
-    public ResponseEntity<String> inscription(
+    public ResponseEntity<AdminResponseDTO> inscription(
             @RequestBody AdminRequestDTO adminRequestDTO){
-        String message = adminService.inscriptionAdmin(adminRequestDTO, adminRequestDTO.telephone());
-        return ResponseEntity.ok(message);
+        AdminResponseDTO admin = adminService.createAdmin(adminRequestDTO);
+        return ResponseEntity.ok(admin);
     }
 
     @GetMapping(path = "/admins")
@@ -44,4 +46,36 @@ public class AdminController {
         String message = adminService.supprimerAdmin(id);
         return ResponseEntity.ok(message);
     }
+    @PostMapping(path = "/producteurs/ajouter")
+    public ResponseEntity<Producteur> ajouterProducteur(@RequestBody Producteur producteur) {
+        return ResponseEntity.ok(adminService.createProducteur(producteur));
+    }
+    @PutMapping("/producteurs/{id}/statut")
+    public ResponseEntity<Producteur> changerStatutProducteur(@PathVariable int id,
+                                                              @RequestParam StatutProducteur statut,
+                                                              @RequestParam(required = false) String raisonRejet) {
+        return ResponseEntity.ok(adminService.changeProducteurStatut(id, statut, raisonRejet));
+    }
+    @GetMapping(path = "/producteurs")
+    public ResponseEntity<List<Producteur>> voirTousLesProducteurs() {
+        return ResponseEntity.ok(adminService.recupererLesProducteurs());
+    }
+    @GetMapping(path = "/consommateurs")
+    public ResponseEntity<List<Consommateur>> voirTousLesConsommateurs() {
+        return ResponseEntity.ok(adminService.recupererLesConsommateurs());
+    }
+    @GetMapping(path = "/produits")
+    public ResponseEntity<List<Produit>> voirTousLesProduits() {
+        return ResponseEntity.ok(adminService.recupererTousLesProduits());
+    }
+    @GetMapping(path = "/commandes")
+    public ResponseEntity<List<Commande>> voirToutesLesCommandes() {
+        return ResponseEntity.ok(adminService.recupererToutesLesCommandes());
+    }
+    @GetMapping("/paiements")
+    public ResponseEntity<List<Paiement>> voirTousLesPaiements() {
+        return ResponseEntity.ok(adminService.recupererTousLesPaiements());
+    }
+
+
 }

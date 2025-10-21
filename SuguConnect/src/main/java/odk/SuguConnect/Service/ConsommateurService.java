@@ -23,17 +23,19 @@ public class ConsommateurService {
     private final PanierRepository panierRepository;
     private final CommandeRepository commandeRepository;
     private final PaiementRepository paiementRepository;
+    private final CommandeService commandeService;
 
     public ConsommateurService(ConsommateurRepository consommateurRepository
             , ProduitRepository produitRepository
             , PanierRepository panierRepository
-            ,CommandeRepository commandeRepository
-            ,PaiementRepository paiementRepository) {
+            , CommandeRepository commandeRepository
+            , PaiementRepository paiementRepository, CommandeService commandeService) {
         this.consommateurRepository = consommateurRepository;
         this.produitRepository = produitRepository;
         this.panierRepository = panierRepository;
         this.commandeRepository = commandeRepository;
         this.paiementRepository = paiementRepository;
+        this.commandeService = commandeService;
     }
 
 
@@ -116,52 +118,12 @@ public class ConsommateurService {
         if(panier == null || panier.getProduits().isEmpty()){
             throw new IllegalArgumentException("votre panier est vide");
         }
-        panier.getProduits().remove(produitId);
+        panier.getProduits().removeIf(p -> p.getId() == produitId);
         panierRepository.save(panier);
         return "Le produit retiré du panier";
     }
     @Transactional
     public Commande passerCommande(int idConsommateur , ModePaiement modePaiement){
-        Consommateur consommateur = consommateurRepository.findById(idConsommateur)
-                .orElseThrow(()->new EntityNotFoundException("consommateur introuvable"));
-        Panier panier = consommateur.getPanier();
-        if (panier == null || panier.getProduits().isEmpty()){
-            throw new EntityNotFoundException("le panier est vide");
-        }
-        Commande commande = new Commande();
-        commande.setConsommateur(consommateur);
-        commande.setDateCommande(LocalDate.now());
-        commande.setModePaiement(modePaiement);
-        commande.setStatutCommande(StatutCommande.EN_ATTENTE);
-        Double total = 0.0;
-        for(PanierProduit panierProduit : panier.getPanierProduits()){
-            Produit produit = panierProduit.getProduit();
-            if(produit.getStockDisponible()< panierProduit.getQuantite()){
-                throw new IllegalArgumentException("Stock insuffisant");
-            }
-            CommandeProduit commandeProduit = new CommandeProduit();
-            commandeProduit.setCommande(commande);
-            commandeProduit.setProduit(produit);
-            commandeProduit.setQuantite(panierProduit.getQuantite());
-            commandeProduit.setPrixUnitaire(produit.getPrixUnitaire());
-            commande.getCommandeProduits().add(commandeProduit);
-            total += produit.getPrixUnitaire() * panierProduit.getQuantite();
-            panierProduit.setDejaCommande(true);
-        }
-        commande.setMontantTotal(total);
-        commandeRepository.save(commande);
-        Paiement paiement = new Paiement();
-        paiement.setCommande(commande);
-        paiement.setMethodePaiement(modePaiement);
-        paiement.setMontant(total);
-        paiement.setStatutPaiement(StatutPaiement.INITIE);
-        paiement.setDatePaiement(LocalDate.now());
-        paiementRepository.save(paiement);
-        commande.setPaiement(paiement);
-        commandeRepository.save(commande);
-        panierRepository.save(panier);
-        return commande;
+        return commandeService.passerCommande(idConsommateur, modePaiement);
     }
-
-
 }
