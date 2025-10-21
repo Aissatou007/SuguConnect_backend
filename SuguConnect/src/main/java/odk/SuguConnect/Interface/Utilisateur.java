@@ -32,6 +32,7 @@ public abstract class Utilisateur {
     private Role role ;
     private String motDePasse ;
     private LocalDate dateInscription ;
+    private String MotifDeRejet;
 
 
 }

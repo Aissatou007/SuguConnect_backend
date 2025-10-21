@@ -2,6 +2,9 @@ package odk.SuguConnect.Controller;
 
 import odk.SuguConnect.DTO.Request.ConsommateurRequestDTO;
 import odk.SuguConnect.DTO.Responses.ConsommateurResponseDTO;
+import odk.SuguConnect.Entity.Commande;
+import odk.SuguConnect.Entity.Produit;
+import odk.SuguConnect.Enums.ModePaiement;
 import odk.SuguConnect.Service.ConsommateurService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -38,5 +41,28 @@ public class ConsommateurController {
     public ResponseEntity<String>supprimer(@PathVariable int id){
     String message = consommateurService.supprimerConsommateur(id);
     return ResponseEntity.ok(message);
+    }
+    @GetMapping(path = "/produits")
+    public ResponseEntity<List<Produit>> voirProduitsDisponibles() {
+        return ResponseEntity.ok(consommateurService.voirTousLesProduitsDisponibles());
+    }
+    @PostMapping(path = "/{idConsommateur}/panier/ajouter/{idProduit}")
+    public ResponseEntity<String> ajouterAuPanier(@PathVariable int idConsommateur,
+                                                  @PathVariable int idProduit,
+                                                  @RequestParam int quantite) {
+        String message = consommateurService.ajouterProduitAuPanier(idConsommateur, idProduit, quantite);
+        return ResponseEntity.ok(message);
+    }
+    @DeleteMapping(path = "/{idConsommateur}/panier/retirer/{idProduit}")
+    public ResponseEntity<String> retirerDuPanier(@PathVariable int idConsommateur,
+                                                  @PathVariable int idProduit) {
+        String message = consommateurService.retirerProduitDuPanier(idConsommateur, idProduit);
+        return ResponseEntity.ok(message);
+    }
+    @PostMapping(path = "/{idConsommateur}/commande")
+    public ResponseEntity<Commande> passerCommande(@PathVariable int idConsommateur,
+                                                   @RequestParam ModePaiement modePaiement) {
+        Commande commande = consommateurService.passerCommande(idConsommateur, modePaiement);
+        return ResponseEntity.ok(commande);
     }
 }
