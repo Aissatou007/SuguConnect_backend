@@ -1,0 +1,23 @@
+meta {
+  name: Get Categories (Public)
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/categorie
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  # Voir Toutes les Catégories (Public)
+  
+  **Authentification:** AUCUNE requise (endpoint public)
+  
+  Retourne la liste de toutes les catégories de produits disponibles.
+}

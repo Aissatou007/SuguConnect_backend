@@ -1,5 +1,6 @@
 package odk.SuguConnect.Entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -15,11 +16,13 @@ import java.util.List;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
+@JsonIgnoreProperties({"produits", "motDePasse"})
 public class Producteur extends Utilisateur {
     @Enumerated(EnumType.STRING)
     private StatutProducteur statutProducteur;
-    private String desription ;
-    @OneToMany(mappedBy = "producteur" , cascade = CascadeType.ALL)
-   private List<Produit> produits;
-
+    private String description;
+    private String nomFerme;
+    private String photoUrl;
+    @OneToMany(mappedBy = "producteur", cascade = CascadeType.ALL)
+    private List<Produit> produits;
 }

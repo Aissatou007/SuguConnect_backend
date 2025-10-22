@@ -11,7 +11,7 @@ public class ConsommateurMapper {
         consommateur.setTelephone(dtoConsommateur.telephone());
         consommateur.setEmail(dtoConsommateur.email());
         consommateur.setLocalisation(dtoConsommateur.localisation());
-        consommateur.setLattitude(dtoConsommateur.latitude());
+        consommateur.setLatitude(dtoConsommateur.latitude());
         consommateur.setLongitude(dtoConsommateur.longitude());
         consommateur.setMotDePasse(dtoConsommateur.motDePasse());
         return consommateur;
@@ -27,10 +27,10 @@ public class ConsommateurMapper {
                 consommateur.getTelephone(),
                 consommateur.getEmail(),
                 consommateur.getLocalisation(),
-                consommateur.getLattitude(),
+                consommateur.getLatitude(),
                 consommateur.getLongitude(),
                 consommateur.getRole(),
-                consommateur.getPanier(),
+                consommateur.getPanier() != null ? consommateur.getPanier().getId() : null,
                 consommateur.getDateInscription()
         );
         return consommateurResponseDTO;

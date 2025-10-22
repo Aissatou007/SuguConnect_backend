@@ -1,0 +1,34 @@
+meta {
+  name: Get All Consommateurs
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/admin/consommateurs
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  # Récupérer Tous les Consommateurs
+  
+  **Authentification:** Requiert un token ADMIN
+  
+  Retourne la liste complète de tous les consommateurs inscrits sur la plateforme.
+  
+  **Prérequis:**
+  - Être connecté en tant qu'admin (exécuter d'abord "Login Admin")
+  - Le token doit être dans la variable `adminToken`
+  
+  **Réponse attendue:**
+  - Liste de consommateurs avec leurs informations (nom, prénom, téléphone, email, etc.)
+}
