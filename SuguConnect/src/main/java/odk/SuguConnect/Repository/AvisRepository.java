@@ -8,6 +8,6 @@ import java.util.List;
 
 public interface AvisRepository extends JpaRepository<Avis, Integer> {
     List<Avis> findByProducteurAndValideTrue(Producteur producteur);
-    List<Avis> findByCommandeId(int commandeId);
-    boolean existsByCommandeId(int commandeId);
+    List<Avis> findByCommandeIdCommande(int idCommande);
+    boolean existsByCommandeIdCommande(int idCommande);
 }
