@@ -1,0 +1,47 @@
+meta {
+  name: Login Admin
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/auth/login/admin
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "telephone": "70000000",
+    "motDePasse": "admin123"
+  }
+}
+
+script:post-response {
+  if (res.status === 200) {
+    bru.setEnvVar("adminToken", res.body.token);
+    console.log("✅ Token admin capturé:", res.body.token);
+  } else {
+    console.error("❌ Erreur de connexion:", res.status, res.body);
+  }
+}
+
+docs {
+  # Connexion Admin
+  
+  Permet de se connecter en tant qu'administrateur et récupère un token JWT.
+  
+  **Credentials par défaut:**
+  - Téléphone: `70000000`
+  - Mot de passe: `admin123`
+  
+  **Réponse attendue:**
+  - Token JWT valide pendant 24h
+  - Rôle: ADMIN
+  
+  Le token est automatiquement sauvegardé dans la variable `adminToken`.
+}

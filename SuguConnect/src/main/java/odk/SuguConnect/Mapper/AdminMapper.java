@@ -14,7 +14,7 @@ public class AdminMapper {
         admin.setTelephone(dtoAdmin.telephone());
         admin.setEmail(dtoAdmin.email());
         admin.setLocalisation(dtoAdmin.localisation());
-        admin.setLattitude(dtoAdmin.latitude());
+        admin.setLatitude(dtoAdmin.latitude());
         admin.setLongitude(dtoAdmin.longitude());
         admin.setMotDePasse(dtoAdmin.motDePasse());
         return admin;
@@ -30,7 +30,7 @@ public class AdminMapper {
                 admin.getTelephone(),
                 admin.getEmail(),
                 admin.getLocalisation(),
-                admin.getLattitude(),
+                admin.getLatitude(),
                 admin.getLongitude(),
                 admin.getRole(),
                 admin.getDateInscription()

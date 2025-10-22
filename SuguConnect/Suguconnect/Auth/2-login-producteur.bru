@@ -1,0 +1,45 @@
+meta {
+  name: Login Producteur
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/auth/login/producteur
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "telephone": "76543210",
+    "motDePasse": "producteur123"
+  }
+}
+
+script:post-response {
+  if (res.status === 200) {
+    bru.setEnvVar("producteurToken", res.body.token);
+    console.log("✅ Token producteur capturé:", res.body.token);
+  } else {
+    console.error("❌ Erreur de connexion:", res.status, res.body);
+  }
+}
+
+docs {
+  # Connexion Producteur
+  
+  Permet de se connecter en tant que producteur et récupère un token JWT.
+  
+  **Credentials de test:**
+  - Téléphone: `76543210`
+  - Mot de passe: `producteur123`
+  
+  **Note:** Le compte producteur doit être validé (ACCEPTE) par un admin avant de pouvoir se connecter.
+  
+  Le token est automatiquement sauvegardé dans la variable `producteurToken`.
+}

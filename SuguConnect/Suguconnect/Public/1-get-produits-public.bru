@@ -1,0 +1,25 @@
+meta {
+  name: Get Produits (Public)
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/consommateur/produits
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  # Voir les Produits Disponibles (Public)
+  
+  **Authentification:** AUCUNE requise (endpoint public)
+  
+  Retourne tous les produits disponibles avec un stock > 0.
+  
+  Cet endpoint peut être appelé sans token JWT, ce qui permet aux visiteurs non connectés de consulter le catalogue.
+}

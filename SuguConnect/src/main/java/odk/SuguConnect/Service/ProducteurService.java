@@ -10,6 +10,7 @@ import odk.SuguConnect.Enums.StatutProducteur;
 import odk.SuguConnect.Mapper.ProducteurMapper;
 import odk.SuguConnect.Repository.ProducteurRepository;
 import odk.SuguConnect.Repository.ProduitRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -20,10 +21,16 @@ public class ProducteurService {
     private final ProducteurRepository producteurRepository ;
     private final ProduitRepository produitRepository;
     private final ProduitService produitService;
-    public ProducteurService(ProducteurRepository producteurRepository, ProduitRepository produitRepository, ProduitService produitService) {
+    private final PasswordEncoder passwordEncoder;
+    
+    public ProducteurService(ProducteurRepository producteurRepository, 
+                            ProduitRepository produitRepository, 
+                            ProduitService produitService,
+                            PasswordEncoder passwordEncoder) {
         this.producteurRepository = producteurRepository;
         this.produitRepository = produitRepository;
         this.produitService = produitService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     //Inscription d'un producteur
@@ -33,24 +40,13 @@ public class ProducteurService {
             throw new IllegalArgumentException("Ce compte existe déjà");
         }
         Producteur producteur1 = ProducteurMapper.toEntity(producteurRequestDTO,new Producteur());
+        producteur1.setMotDePasse(passwordEncoder.encode(producteurRequestDTO.motDePasse()));
         producteur1.setRole(Role.PRODUCTEUR);
         producteur1.setStatutProducteur(StatutProducteur.EN_ATTENTE);
         producteur1.setDateInscription(LocalDate.now());
+        producteur1.setActif(true);
         producteurRepository.save(producteur1);
         return "Soyez le bienvenue ";
-    }
-    //Connexion d'un producteur
-    public ProducteurResponseDTO connexionProducteur(String telephone , String motDePasse){
-        Producteur producteur = producteurRepository.findByTelephone(telephone);
-        if(producteur == null){
-            throw new EntityNotFoundException("Produteur non trouver");
-        }
-        if(producteur.getStatutProducteur()==StatutProducteur.EN_ATTENTE || producteur.getStatutProducteur()==StatutProducteur.REFUSER){
-            throw new IllegalArgumentException("Vous n'avez pas d'accès");
-        } if(!producteur.getMotDePasse().equals(motDePasse) ){
-            throw new IllegalArgumentException("Mot de passe incorrecte");
-        } return ProducteurMapper.toResponse(producteur);
-
     }
     //Lister les producteurs
     public List<ProducteurResponseDTO> recupererLesProducteurs(){
@@ -73,17 +69,20 @@ public class ProducteurService {
         producteur.setTelephone(producteurRequestDTO.telephone());
         producteur.setEmail(producteurRequestDTO.email());
         producteur.setLocalisation(producteurRequestDTO.localisation());
-        producteur.setMotDePasse(producteurRequestDTO.motDePasse());
-        producteur.setDesription(producteurRequestDTO.description());
+        // Encoder le mot de passe uniquement s'il est fourni et non vide
+        if (producteurRequestDTO.motDePasse() != null && !producteurRequestDTO.motDePasse().isEmpty()) {
+            producteur.setMotDePasse(passwordEncoder.encode(producteurRequestDTO.motDePasse()));
+        }
+        producteur.setDescription(producteurRequestDTO.description());
         producteurRepository.save(producteur);
-        return "Vos informations ont été modifier avec succès";
+        return "Vos informations ont été modifiées avec succès";
     }
     //Supprimer un producteur
     public String supprimerProducteur(int id){
         Producteur producteur = producteurRepository.findById(id).orElseThrow(()
                 -> new EntityNotFoundException("Ce producteur n'a pas de compte"));
         producteurRepository.delete(producteur);
-        return "Le compte a été supprimer avec succès";
+        return "Le compte a été supprimé avec succès";
     }
 
     public Produit ajouterProduit(Produit produit , int producteurId){
@@ -97,7 +96,7 @@ public class ProducteurService {
     }
     public String supprimerProduit(int produitId , int producteurId){
        produitService.supprimerProduit(produitId,producteurId);
-       return "Le produit  a ete supprimer";
+       return "Le produit a été supprimé";
     }
 
 }

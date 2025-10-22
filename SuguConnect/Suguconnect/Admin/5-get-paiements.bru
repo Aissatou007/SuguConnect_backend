@@ -1,0 +1,27 @@
+meta {
+  name: Get All Paiements
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/admin/paiements
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  # Récupérer Tous les Paiements
+  
+  **Authentification:** Requiert un token ADMIN
+  
+  Retourne la liste complète de tous les paiements effectués sur la plateforme.
+}

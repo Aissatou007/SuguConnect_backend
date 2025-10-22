@@ -5,20 +5,21 @@ import odk.SuguConnect.DTO.Responses.ProducteurResponseDTO;
 import odk.SuguConnect.Entity.Producteur;
 
 public class ProducteurMapper {
-    public static Producteur toEntity(ProducteurRequestDTO producteurRequestDTO , Producteur producteur){
+    public static Producteur toEntity(ProducteurRequestDTO producteurRequestDTO, Producteur producteur){
         producteur.setNom(producteurRequestDTO.nom());
         producteur.setPrenom(producteurRequestDTO.prenom());
         producteur.setTelephone(producteurRequestDTO.telephone());
         producteur.setEmail(producteurRequestDTO.email());
         producteur.setLocalisation(producteurRequestDTO.localisation());
-        producteur.setLattitude(producteurRequestDTO.latitude());
+        producteur.setLatitude(producteurRequestDTO.latitude());
         producteur.setLongitude(producteurRequestDTO.longitude());
         producteur.setMotDePasse(producteurRequestDTO.motDePasse());
-        producteur.setDesription(producteurRequestDTO.description());
-        return producteur ;
+        producteur.setDescription(producteurRequestDTO.description());
+        producteur.setNomFerme(producteurRequestDTO.nomFerme());
+        return producteur;
     }
     public static ProducteurResponseDTO toResponse(Producteur producteur){
-        if(producteur == null) return null ;
+        if(producteur == null) return null;
         ProducteurResponseDTO producteurResponseDTO = new ProducteurResponseDTO(
                 producteur.getId(),
                 producteur.getNom(),
@@ -26,12 +27,15 @@ public class ProducteurMapper {
                 producteur.getTelephone(),
                 producteur.getEmail(),
                 producteur.getLocalisation(),
-                producteur.getLattitude(),
+                producteur.getLatitude(),
                 producteur.getLongitude(),
                 producteur.getRole(),
                 producteur.getStatutProducteur(),
-                producteur.getDesription(),
-                producteur.getDateInscription()
+                producteur.getDescription(),
+                producteur.getNomFerme(),
+                producteur.getPhotoUrl(),
+                producteur.getDateInscription(),
+                producteur.getMotifDeRejet()
         );
         return producteurResponseDTO;
     }

@@ -1,0 +1,27 @@
+meta {
+  name: Get All Commandes
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/admin/commandes
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  # Récupérer Toutes les Commandes
+  
+  **Authentification:** Requiert un token ADMIN
+  
+  Retourne la liste complète de toutes les commandes passées sur la plateforme.
+}
