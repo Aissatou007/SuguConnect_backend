@@ -51,7 +51,7 @@ public class AvisService {
         }
 
         // Vérifier qu'un avis n'existe pas déjà
-        if (avisRepository.existsByCommandeId(commandeId)) {
+        if (avisRepository.existsByCommandeIdCommande(commandeId)) {
             throw new IllegalStateException("Vous avez déjà donné un avis sur cette commande");
         }
 
@@ -105,7 +105,7 @@ public class AvisService {
      * Récupérer l'avis d'une commande
      */
     public Avis getAvisCommande(int commandeId) {
-        List<Avis> avis = avisRepository.findByCommandeId(commandeId);
+        List<Avis> avis = avisRepository.findByCommandeIdCommande(commandeId);
         return avis.isEmpty() ? null : avis.get(0);
     }
 }

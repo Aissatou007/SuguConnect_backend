@@ -122,7 +122,7 @@ public class CommandeService {
         StatutCommande ancienStatut = commande.getStatutCommande();
         commande.setStatutCommande(nouveauStatut);
         
-        if (nouveauStatut == StatutCommande.REFUSEE) {
+        if (nouveauStatut == StatutCommande.DECLINEE) {
             commande.setMotifRejet(motifRejet);
             // Notifier le consommateur du refus
             notificationService.notifierCommandeRefusee(
