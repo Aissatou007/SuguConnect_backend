@@ -24,6 +24,7 @@ public class AdminService {
     private final ConsommateurRepository consommateurRepository;
     private final ProduitRepository produitRepository;
 
+
     public AdminService(AdminRepository adminRepository, ProducteurRepository producteurRepository, CommandeRepository commandeRepository, PaiementRepository paiementRepository, PasswordEncoder passwordEncoder, ConsommateurRepository consommateurRepository, ProduitRepository produitRepository) {
         this.adminRepository = adminRepository;
         this.producteurRepository = producteurRepository;
@@ -50,7 +51,7 @@ public class AdminService {
         }
     }
     public Admin creationAdminParDefaut(String nom, String prenom, String email , String telephone, String motDePasse){
-        if(adminRepository.findByTelephone(telephone) != null || adminRepository.existByEmail(email)){
+        if(adminRepository.findByTelephone(telephone) != null || adminRepository.existsByEmail(email)){
             throw new IllegalArgumentException("Cet admin existe déjà !");
         }
         Admin admin = new Admin();
@@ -66,7 +67,7 @@ public class AdminService {
     }
     public AdminResponseDTO createAdmin(AdminRequestDTO dto) {
         verifierRoleAdmin();
-        if (adminRepository.existByEmail(dto.email()) || adminRepository.findByTelephone(dto.telephone()) != null) {
+        if (adminRepository.existsByEmail(dto.email()) || adminRepository.findByTelephone(dto.telephone()) != null) {
             throw new IllegalArgumentException("Cet admin (email/telephone) existe déjà");
         }
         Admin admin = AdminMapper.toEntity(dto, new Admin());
@@ -125,9 +126,9 @@ public class AdminService {
         Producteur p = producteurRepository.findById(producteurId)
                 .orElseThrow(() -> new EntityNotFoundException("Producteur introuvable"));
         p.setStatutProducteur(nouveauStatut);
-        if (nouveauStatut == StatutProducteur.REFUSER) {
+        if (nouveauStatut == StatutProducteur.REFUSE) {
             p.setMotifDeRejet(raisonRejet);
-        } else if (nouveauStatut == StatutProducteur.ACCEPTER) {
+        } else if (nouveauStatut == StatutProducteur.ACCEPTE) {
 
         }
         return producteurRepository.save(p);

@@ -53,10 +53,10 @@ public class CategorieService {
                 .orElseThrow(()->new EntityNotFoundException("Cette categorie n'existe pas"));
         List<Produit> produitAssocies = produitRepository.findByCategorieId(idCategorie);
         if(!produitAssocies.isEmpty()){
-            throw new IllegalArgumentException("On ne peux pas supprimer une catégorie contenant des produits");
+            throw new IllegalArgumentException("On ne peut pas supprimer une catégorie contenant des produits");
         }
         categorieRepository.delete(categorie);
-        return "Categorie supprimé avec succès";
+        return "Catégorie supprimée avec succès";
     }
     public List<Categorie> listerCategorie(){
         return categorieRepository.findAll();

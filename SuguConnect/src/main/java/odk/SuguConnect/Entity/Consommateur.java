@@ -1,5 +1,6 @@
 package odk.SuguConnect.Entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -14,8 +15,9 @@ import java.util.List;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
+@JsonIgnoreProperties({"panier", "paiements", "commandes", "produit", "motDePasse"})
 public class Consommateur extends Utilisateur {
-   @OneToOne
+   @OneToOne(cascade = CascadeType.ALL)
     private Panier panier ;
    @OneToMany(mappedBy = "consommateur" , cascade = CascadeType.ALL)
     private List<Paiement> paiements ;

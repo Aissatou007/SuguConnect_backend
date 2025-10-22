@@ -9,9 +9,6 @@ import odk.SuguConnect.Enums.ModePaiement;
 import odk.SuguConnect.Enums.StatutPaiement;
 
 import java.time.LocalDate;
-import java.util.Date;
-import java.util.List;
-
 @Entity
 @Getter
 @Setter

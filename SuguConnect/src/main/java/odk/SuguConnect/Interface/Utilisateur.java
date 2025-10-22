@@ -27,12 +27,14 @@ public abstract class Utilisateur {
     private String email ;
     private String localisation ;
     private long longitude ;
-    private long lattitude ;
+    @Column(name = "lattitude")
+    private long latitude ;
     @Enumerated(EnumType.STRING)
     private Role role ;
     private String motDePasse ;
     private LocalDate dateInscription ;
     private String MotifDeRejet;
+    private boolean actif;
 
 
 }

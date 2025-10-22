@@ -1,0 +1,27 @@
+meta {
+  name: Get All Produits
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/admin/produits
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  # Récupérer Tous les Produits
+  
+  **Authentification:** Requiert un token ADMIN
+  
+  Retourne la liste complète de tous les produits disponibles sur la plateforme.
+}

@@ -10,6 +10,5 @@ import java.util.List;
 
 public interface CommandeRepository extends JpaRepository<Commande , Integer> {
     List<Commande> findByConsommateur(Consommateur consommateur);
-    List<Commande> findByProducteur(Producteur producteur);
-    List<Commande> findByStatus(StatutCommande status);
+    List<Commande> findByStatutCommande(StatutCommande statut);
 }
