@@ -2,11 +2,13 @@ package odk.SuguConnect.Service;
 
 import jakarta.persistence.EntityNotFoundException;
 import odk.SuguConnect.DTO.Request.AdminRequestDTO;
+import odk.SuguConnect.DTO.Request.ProducteurRequestDTO;
 import odk.SuguConnect.DTO.Responses.AdminResponseDTO;
 import odk.SuguConnect.Entity.*;
 import odk.SuguConnect.Enums.Role;
 import odk.SuguConnect.Enums.StatutProducteur;
 import odk.SuguConnect.Mapper.AdminMapper;
+import odk.SuguConnect.Mapper.ProducteurMapper;
 import odk.SuguConnect.Repository.*;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -74,6 +76,7 @@ public class AdminService {
         admin.setMotDePasse(passwordEncoder.encode(dto.motDePasse()));
         admin.setRole(Role.ADMIN);
         admin.setDateInscription(LocalDate.now());
+        admin.setActif(true); // Le compte est actif par défaut
         Admin saved = adminRepository.save(admin);
         return AdminMapper.toResponse(saved);
     }
@@ -109,14 +112,38 @@ public class AdminService {
 
         return "Le compte admin a été supprimé avec succès";
     }
-    public Producteur createProducteur(Producteur producteur) {
+    
+    /**
+     * Activer ou désactiver un compte admin
+     */
+    public String toggleAdminStatus(int id, boolean actif) {
         verifierRoleAdmin();
-        if (producteurRepository.findByTelephone(producteur.getTelephone()) != null) {
+        Admin admin = adminRepository.findById(id).orElseThrow(() ->
+                new EntityNotFoundException("Cet admin n'existe pas"));
+        
+        admin.setActif(actif);
+        adminRepository.save(admin);
+        
+        return actif ? "Le compte admin a été activé avec succès" : "Le compte admin a été désactivé avec succès";
+    }
+    /**
+     * Créer un nouveau producteur (par admin)
+     * Le mot de passe est encodé et le statut est EN_ATTENTE par défaut
+     */
+    public Producteur createProducteur(ProducteurRequestDTO dto) {
+        verifierRoleAdmin();
+        
+        if (producteurRepository.findByTelephone(dto.telephone()) != null) {
             throw new IllegalArgumentException("Ce producteur existe déjà");
         }
+        
+        Producteur producteur = ProducteurMapper.toEntity(dto, new Producteur());
+        producteur.setMotDePasse(passwordEncoder.encode(dto.motDePasse()));
         producteur.setRole(Role.PRODUCTEUR);
         producteur.setStatutProducteur(StatutProducteur.EN_ATTENTE);
         producteur.setDateInscription(LocalDate.now());
+        producteur.setActif(true);
+        
         return producteurRepository.save(producteur);
     }
 

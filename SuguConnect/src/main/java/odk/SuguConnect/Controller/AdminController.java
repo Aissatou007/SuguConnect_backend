@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import odk.SuguConnect.DTO.Request.AdminRequestDTO;
+import odk.SuguConnect.DTO.Request.ProducteurRequestDTO;
 import odk.SuguConnect.DTO.Responses.AdminResponseDTO;
 import odk.SuguConnect.Entity.*;
 import odk.SuguConnect.Enums.StatutProducteur;
@@ -110,18 +111,41 @@ public class AdminController {
         String message = adminService.supprimerAdmin(id);
         return ResponseEntity.ok(message);
     }
+    
+    @PutMapping(path = "/{id}/toggle-status")
+    @Operation(
+            summary = "Activer/Désactiver un administrateur",
+            description = "Permet d'activer ou désactiver le compte d'un administrateur"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Statut modifié avec succès"),
+            @ApiResponse(responseCode = "404", description = "Administrateur non trouvé")
+    })
+    public ResponseEntity<String> toggleAdminStatus(
+            @Parameter(description = "ID de l'administrateur", required = true)
+            @PathVariable int id,
+            @Parameter(description = "Actif (true) ou Inactif (false)", required = true)
+            @RequestParam boolean actif){
+        String message = adminService.toggleAdminStatus(id, actif);
+        return ResponseEntity.ok(message);
+    }
     @PostMapping(path = "/producteurs/ajouter")
     @Operation(
             summary = "Ajouter un producteur",
-            description = "Permet à un administrateur d'ajouter un nouveau producteur"
+            description = "Permet à un administrateur d'ajouter un nouveau producteur. Le mot de passe sera encodé et le statut sera EN_ATTENTE."
     )
-    @ApiResponse(responseCode = "200", description = "Producteur ajouté avec succès")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Producteur ajouté avec succès"),
+            @ApiResponse(responseCode = "400", description = "Producteur existe déjà"),
+            @ApiResponse(responseCode = "403", description = "Accès refusé - Privilèges administrateur requis")
+    })
     public ResponseEntity<Producteur> ajouterProducteur(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
-                    description = "Informations du producteur"
+                    description = "Informations du nouveau producteur",
+                    required = true
             )
-            @RequestBody Producteur producteur) {
-        return ResponseEntity.ok(adminService.createProducteur(producteur));
+            @RequestBody ProducteurRequestDTO producteurDTO) {
+        return ResponseEntity.ok(adminService.createProducteur(producteurDTO));
     }
     @PutMapping("/producteurs/{id}/statut")
     @Operation(

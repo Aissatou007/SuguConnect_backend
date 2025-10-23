@@ -7,14 +7,16 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Collections;
 
 /**
  * Filtre d'authentification JWT pour intercepter et valider les tokens
@@ -25,7 +27,6 @@ import java.io.IOException;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
-    private final UserDetailsService userDetailsService;
 
     @Override
     protected void doFilterInternal(
@@ -51,14 +52,30 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             // Extraire le téléphone (username) du token
             telephone = jwtService.extractUsername(jwt);
+            logger.info("JWT Filter - Telephone extrait: " + telephone);
 
             // Si le téléphone existe et qu'il n'y a pas d'authentification en cours
             if (telephone != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                // Charger les détails de l'utilisateur
-                UserDetails userDetails = this.userDetailsService.loadUserByUsername(telephone);
-
+                
                 // Vérifier si le token est valide
-                if (jwtService.isTokenValid(jwt, userDetails.getUsername())) {
+                if (jwtService.isTokenValid(jwt, telephone)) {
+                    logger.info("JWT Filter - Token valide pour: " + telephone);
+                    
+                    // Extraire le rôle directement du token JWT
+                    String role = jwtService.extractRole(jwt);
+                    logger.info("JWT Filter - Rôle extrait du token: " + role);
+                    
+                    // Créer l'autorité avec le préfixe ROLE_
+                    SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + role);
+                    logger.info("JWT Filter - Autorité créée: " + authority.getAuthority());
+                    
+                    // Créer un UserDetails simplifié à partir du token
+                    UserDetails userDetails = User.builder()
+                            .username(telephone)
+                            .password("") // Pas besoin du mot de passe pour JWT
+                            .authorities(Collections.singletonList(authority))
+                            .build();
+                    
                     // Créer un token d'authentification
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userDetails,
@@ -73,11 +90,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     
                     // Mettre à jour le contexte de sécurité
                     SecurityContextHolder.getContext().setAuthentication(authToken);
+                    logger.info("JWT Filter - Authentification définie dans SecurityContext avec autorités: " + authToken.getAuthorities());
+                } else {
+                    logger.warn("JWT Filter - Token invalide pour: " + telephone);
                 }
+            } else if (telephone == null) {
+                logger.warn("JWT Filter - Téléphone null dans le token");
+            } else {
+                logger.info("JWT Filter - Authentification déjà présente dans SecurityContext");
             }
         } catch (Exception e) {
             // En cas d'erreur (token invalide, expiré, etc.), continuer sans authentification
-            logger.error("Erreur lors de la validation du token JWT: " + e.getMessage());
+            logger.error("Erreur lors de la validation du token JWT: " + e.getMessage(), e);
         }
 
         // Continuer la chaîne de filtres
