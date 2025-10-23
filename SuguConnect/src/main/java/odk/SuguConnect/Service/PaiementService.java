@@ -145,7 +145,6 @@ public class PaiementService {
         if (commande != null && commande.getConsommateur() != null) {
             notificationService.notifierRemboursementEffectue(
                 commande.getConsommateur().getId(),
-                commande.getIdCommande(),
                 paiement.getMontant()
             );
         }
