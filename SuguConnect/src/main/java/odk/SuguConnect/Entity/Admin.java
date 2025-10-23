@@ -10,8 +10,6 @@ import odk.SuguConnect.Interface.Utilisateur;
 @Entity
 @Getter
 @Setter
-@AllArgsConstructor
-@NoArgsConstructor
 public class Admin extends Utilisateur {
 
 }

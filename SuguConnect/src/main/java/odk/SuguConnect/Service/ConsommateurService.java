@@ -53,13 +53,10 @@ public class ConsommateurService {
                 .toList();
     }
     
-    /**
-     * Récupérer un consommateur par ID
-     * Responsabilité: Lecture d'un consommateur spécifique
-     */
+
     public ConsommateurResponseDTO recupererUnConsommateur(int id) {
         Consommateur consommateur = findConsommateurById(id);
-        return ConsommateurMapper::toResponse(consommateur);
+        return ConsommateurMapper.toResponse(consommateur);
     }
     
     /**

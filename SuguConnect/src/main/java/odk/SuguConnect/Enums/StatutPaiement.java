@@ -3,5 +3,6 @@ public enum StatutPaiement {
     INITIE,
     EN_ATTENTE,
     VALIDE ,
-    ECHOUE
+    ECHOUE,
+    REMBOURSE
 }
