@@ -1,103 +1,117 @@
 package odk.SuguConnect.Service;
 
 import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
 import odk.SuguConnect.DTO.Request.ProducteurRequestDTO;
 import odk.SuguConnect.DTO.Responses.ProducteurResponseDTO;
 import odk.SuguConnect.Entity.Producteur;
-import odk.SuguConnect.Entity.Produit;
 import odk.SuguConnect.Enums.Role;
 import odk.SuguConnect.Enums.StatutProducteur;
 import odk.SuguConnect.Mapper.ProducteurMapper;
 import odk.SuguConnect.Repository.ProducteurRepository;
-import odk.SuguConnect.Repository.ProduitRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.List;
+
+/**
+ * Service responsable UNIQUEMENT de la gestion des producteurs (CRUD)
+ * Respecte le principe SRP - Single Responsibility Principle
+ */
 @Service
-
+@RequiredArgsConstructor
 public class ProducteurService {
-    private final ProducteurRepository producteurRepository ;
-    private final ProduitRepository produitRepository;
-    private final ProduitService produitService;
+    private final ProducteurRepository producteurRepository;
     private final PasswordEncoder passwordEncoder;
-    
-    public ProducteurService(ProducteurRepository producteurRepository, 
-                            ProduitRepository produitRepository, 
-                            ProduitService produitService,
-                            PasswordEncoder passwordEncoder) {
-        this.producteurRepository = producteurRepository;
-        this.produitRepository = produitRepository;
-        this.produitService = produitService;
-        this.passwordEncoder = passwordEncoder;
-    }
 
-    //Inscription d'un producteur
-    public String inscriptionProducteur(ProducteurRequestDTO producteurRequestDTO, String telephone){
-        Producteur producteur =  producteurRepository.findByTelephone(telephone);
-        if (producteur != null){
-            throw new IllegalArgumentException("Ce compte existe déjà");
-        }
-        Producteur producteur1 = ProducteurMapper.toEntity(producteurRequestDTO,new Producteur());
-        producteur1.setMotDePasse(passwordEncoder.encode(producteurRequestDTO.motDePasse()));
-        producteur1.setRole(Role.PRODUCTEUR);
-        producteur1.setStatutProducteur(StatutProducteur.EN_ATTENTE);
-        producteur1.setDateInscription(LocalDate.now());
-        producteur1.setActif(true);
-        producteurRepository.save(producteur1);
+    /**
+     * Inscrire un nouveau producteur
+     * Responsabilité: Création de compte producteur uniquement
+     */
+    public String inscriptionProducteur(ProducteurRequestDTO dto, String telephone) {
+        verifierCompteNonExistant(telephone);
+        
+        Producteur producteur = creerProducteur(dto);
+        producteurRepository.save(producteur);
+        
         return "Soyez le bienvenue ";
     }
-    //Lister les producteurs
-    public List<ProducteurResponseDTO> recupererLesProducteurs(){
-        List<Producteur> producteurs = producteurRepository.findAll();
-        return producteurs.stream().map(ProducteurMapper::toResponse).toList();
+    
+    /**
+     * Récupérer tous les producteurs
+     * Responsabilité: Lecture de données producteurs
+     */
+    public List<ProducteurResponseDTO> recupererLesProducteurs() {
+        return producteurRepository.findAll().stream()
+                .map(ProducteurMapper::toResponse)
+                .toList();
     }
-    //Voir les informations d'un seul producteur
-    public ProducteurResponseDTO recupererUnProducteur(int id){
-        Producteur producteur = producteurRepository.findById(id).orElseThrow(()
-                -> new EntityNotFoundException("Ce producteur n'a pas de compte"));
+    
+    /**
+     * Récupérer un producteur par ID
+     * Responsabilité: Lecture d'un producteur spécifique
+     */
+    public ProducteurResponseDTO recupererUnProducteur(int id) {
+        Producteur producteur = findProducteurById(id);
         return ProducteurMapper.toResponse(producteur);
-
     }
-    //Modifier les informations d'un producteur
-    public String modifierInformationProducteur(ProducteurRequestDTO producteurRequestDTO,int id){
-        Producteur producteur = producteurRepository.findById(id).orElseThrow(()
-                -> new EntityNotFoundException("Ce producteur n'a pas de compte"));
-        producteur.setNom(producteurRequestDTO.nom());
-        producteur.setPrenom(producteurRequestDTO.prenom());
-        producteur.setTelephone(producteurRequestDTO.telephone());
-        producteur.setEmail(producteurRequestDTO.email());
-        producteur.setLocalisation(producteurRequestDTO.localisation());
-        // Encoder le mot de passe uniquement s'il est fourni et non vide
-        if (producteurRequestDTO.motDePasse() != null && !producteurRequestDTO.motDePasse().isEmpty()) {
-            producteur.setMotDePasse(passwordEncoder.encode(producteurRequestDTO.motDePasse()));
-        }
-        producteur.setDescription(producteurRequestDTO.description());
+    
+    /**
+     * Modifier les informations d'un producteur
+     * Responsabilité: Mise à jour des données producteur
+     */
+    public String modifierInformationProducteur(ProducteurRequestDTO dto, int id) {
+        Producteur producteur = findProducteurById(id);
+        mettreAJourInformations(producteur, dto);
         producteurRepository.save(producteur);
         return "Vos informations ont été modifiées avec succès";
     }
-    //Supprimer un producteur
-    public String supprimerProducteur(int id){
-        Producteur producteur = producteurRepository.findById(id).orElseThrow(()
-                -> new EntityNotFoundException("Ce producteur n'a pas de compte"));
+    
+    /**
+     * Supprimer un producteur
+     * Responsabilité: Suppression de compte producteur
+     */
+    public String supprimerProducteur(int id) {
+        Producteur producteur = findProducteurById(id);
         producteurRepository.delete(producteur);
         return "Le compte a été supprimé avec succès";
     }
-
-    public Produit ajouterProduit(Produit produit , int producteurId){
-        return produitService.ajouterProduit(produit , producteurId);
+    
+    // ========== Méthodes privées utilitaires ==========
+    
+    private void verifierCompteNonExistant(String telephone) {
+        if (producteurRepository.findByTelephone(telephone) != null) {
+            throw new IllegalArgumentException("Ce compte existe déjà");
+        }
     }
-    public Produit modifierProduit(Produit produitModifie , int produitId , int producteurId){
-       return produitService.modifierProduit(produitModifie, produitId , producteurId);
+    
+    private Producteur creerProducteur(ProducteurRequestDTO dto) {
+        Producteur producteur = ProducteurMapper.toEntity(dto, new Producteur());
+        producteur.setMotDePasse(passwordEncoder.encode(dto.motDePasse()));
+        producteur.setRole(Role.PRODUCTEUR);
+        producteur.setStatutProducteur(StatutProducteur.EN_ATTENTE);
+        producteur.setDateInscription(LocalDate.now());
+        producteur.setActif(true);
+        return producteur;
     }
-    public List<Produit> listerLesProduits(int producteurId){
-        return produitService.listerLesProduits(producteurId);
+    
+    private Producteur findProducteurById(int id) {
+        return producteurRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Ce producteur n'a pas de compte"));
     }
-    public String supprimerProduit(int produitId , int producteurId){
-       produitService.supprimerProduit(produitId,producteurId);
-       return "Le produit a été supprimé";
+    
+    private void mettreAJourInformations(Producteur producteur, ProducteurRequestDTO dto) {
+        producteur.setNom(dto.nom());
+        producteur.setPrenom(dto.prenom());
+        producteur.setTelephone(dto.telephone());
+        producteur.setEmail(dto.email());
+        producteur.setLocalisation(dto.localisation());
+        producteur.setDescription(dto.description());
+        
+        // Encoder le mot de passe uniquement s'il est fourni
+        if (dto.motDePasse() != null && !dto.motDePasse().isEmpty()) {
+            producteur.setMotDePasse(passwordEncoder.encode(dto.motDePasse()));
+        }
     }
-
 }
-

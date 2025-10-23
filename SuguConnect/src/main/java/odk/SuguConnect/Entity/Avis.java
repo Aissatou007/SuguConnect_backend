@@ -30,12 +30,12 @@ public class Avis {
     @JoinColumn(name = "producteur_id")
     private Producteur producteur;
     
-    private int note; // Note de 1 à 5
+    private int note;
     
     @Column(length = 1000)
     private String commentaire;
     
     private LocalDateTime dateAvis;
     
-    private boolean valide = false; // Pour modération par admin
+    private boolean valide = false;
 }
