@@ -9,10 +9,12 @@ import lombok.RequiredArgsConstructor;
 import odk.SuguConnect.DTO.Request.ConsommateurRequestDTO;
 import odk.SuguConnect.DTO.Responses.ConsommateurResponseDTO;
 import odk.SuguConnect.Entity.Commande;
+import odk.SuguConnect.Entity.Panier;
 import odk.SuguConnect.Entity.Produit;
 import odk.SuguConnect.Enums.ModePaiement;
 import odk.SuguConnect.Service.CommandeService;
 import odk.SuguConnect.Service.ConsommateurService;
+import odk.SuguConnect.Service.PanierService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,6 +27,7 @@ import java.util.List;
 public class ConsommateurController {
     private final ConsommateurService consommateurService;
     private final CommandeService commandeService;
+    private final PanierService panierService;
 
     @PostMapping(path = "/inscription")
     @Operation(
@@ -135,7 +138,7 @@ public class ConsommateurController {
             @PathVariable int idProduit,
             @Parameter(description = "Quantité à ajouter", required = true)
             @RequestParam int quantite) {
-        String message = consommateurService.ajouterProduitAuPanier(idConsommateur, idProduit, quantite);
+        String message = panierService.ajouterProduitAuPanier(idConsommateur, idProduit, quantite);
         return ResponseEntity.ok(message);
     }
 
@@ -153,8 +156,40 @@ public class ConsommateurController {
             @PathVariable int idConsommateur,
             @Parameter(description = "ID du produit", required = true)
             @PathVariable int idProduit) {
-        String message = consommateurService.retirerProduitDuPanier(idConsommateur, idProduit);
+        String message = panierService.retirerProduitDuPanier(idConsommateur, idProduit);
         return ResponseEntity.ok(message);
+    }
+
+    @GetMapping(path = "/{idConsommateur}/panier")
+    @Operation(
+            summary = "Voir le panier",
+            description = "Permet de consulter le contenu du panier d'un consommateur"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Panier récupéré"),
+            @ApiResponse(responseCode = "404", description = "Panier vide ou consommateur non trouvé")
+    })
+    public ResponseEntity<Panier> voirPanier(
+            @Parameter(description = "ID du consommateur", required = true)
+            @PathVariable int idConsommateur) {
+        Panier panier = panierService.voirPanier(idConsommateur);
+        return ResponseEntity.ok(panier);
+    }
+
+    @GetMapping(path = "/{idConsommateur}/commandes")
+    @Operation(
+            summary = "Voir les commandes du consommateur",
+            description = "Retourne l'historique de toutes les commandes passées par un consommateur"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Commandes récupérées"),
+            @ApiResponse(responseCode = "404", description = "Aucune commande trouvée")
+    })
+    public ResponseEntity<List<Commande>> voirMesCommandes(
+            @Parameter(description = "ID du consommateur", required = true)
+            @PathVariable int idConsommateur) {
+        List<Commande> commandes = commandeService.voirCommandesParConsommateur(idConsommateur);
+        return ResponseEntity.ok(commandes);
     }
 
     @PostMapping(path = "/{idConsommateur}/commande")
@@ -172,7 +207,7 @@ public class ConsommateurController {
             @PathVariable int idConsommateur,
             @Parameter(description = "Mode de paiement choisi", required = true)
             @RequestParam ModePaiement modePaiement) {
-        Commande commande = consommateurService.passerCommande(idConsommateur, modePaiement);
+        Commande commande = commandeService.passerCommande(idConsommateur, modePaiement);
         return ResponseEntity.ok(commande);
     }
     

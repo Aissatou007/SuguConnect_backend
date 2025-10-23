@@ -13,6 +13,5 @@ import odk.SuguConnect.Interface.Utilisateur;
 @AllArgsConstructor
 @NoArgsConstructor
 public class Admin extends Utilisateur {
-private String motifDeRejet;
 
 }

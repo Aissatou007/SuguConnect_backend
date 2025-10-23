@@ -37,6 +37,7 @@ public class ProducteurController {
     private final ProducteurService producteurService;
     private final FileStorageService fileStorageService;
     private final CommandeService commandeService;
+    private final odk.SuguConnect.Service.ProduitService produitService;  // Ajout du ProduitService pour respecter SRP
 
     @PostMapping(path = "/inscription")
     @Operation(
@@ -195,7 +196,7 @@ public class ProducteurController {
         produit.setCategorie(categorie);
 
         // Ajouter le produit
-        Produit produitAjoute = producteurService.ajouterProduit(produit, producteurId);
+        Produit produitAjoute = produitService.ajouterProduit(produit, producteurId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body("Produit ajouté avec succès avec " + photoUrls.size() + " photos, ID: " + produitAjoute.getId());
     }
@@ -209,7 +210,7 @@ public class ProducteurController {
     public ResponseEntity<List<Produit>> listerProduits(
             @Parameter(description = "ID du producteur", required = true)
             @PathVariable int producteurId) {
-        List<Produit> produits = producteurService.listerLesProduits(producteurId);
+        List<Produit> produits = produitService.listerLesProduits(producteurId);
         return ResponseEntity.ok(produits);
     }
 
@@ -274,7 +275,7 @@ public class ProducteurController {
             produitModifie.setPhotos(photoUrls);
         }
 
-        Produit produitModifieObj = producteurService.modifierProduit(produitModifie, produitId, producteurId);
+        Produit produitModifieObj = produitService.modifierProduit(produitModifie, produitId, producteurId);
         return ResponseEntity.ok("Produit modifié avec succès, ID: " + produitModifieObj.getId());
     }
 
@@ -294,7 +295,7 @@ public class ProducteurController {
             @Parameter(description = "ID du produit", required = true)
             @PathVariable int produitId) {
 
-        String message = producteurService.supprimerProduit(produitId, producteurId);
+        String message = produitService.supprimerProduit(produitId, producteurId);
         return ResponseEntity.ok(message);
     }
     

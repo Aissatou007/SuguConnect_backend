@@ -52,11 +52,16 @@ public class SecurityConfig {
                                 "/producteur/inscription"
                         ).permitAll()
                         
-                        // Consultation publique
+                        // Consultation publique - Liste des producteurs
                         .requestMatchers(
-                                "/consommateur/produits",          // Voir les produits
                                 "/producteur/producteurs",         // Liste des producteurs
                                 "/files/download/**"               // Téléchargement de fichiers (images, etc.)
+                        ).permitAll()
+                        
+                        // Consultation publique - Produits disponibles (GET uniquement)
+                        .requestMatchers(
+                                org.springframework.http.HttpMethod.GET,
+                                "/consommateur/produits"          // Voir les produits disponibles
                         ).permitAll()
                         
                         // Catégories publiques (GET uniquement)
@@ -112,7 +117,7 @@ public class SecurityConfig {
                         // ============================================
                         // ENDPOINTS PAIEMENT (CONSOMMATEUR ou ADMIN)
                         // ============================================
-                        .requestMatchers("/paiement/**").hasAnyRole("CONSOMMATEUR", "ADMIN")
+                        .requestMatchers("/api/paiements/**").hasAnyRole("CONSOMMATEUR", "ADMIN")
                         
                         // ============================================
                         // ENDPOINTS NOTIFICATIONS (Utilisateurs authentifiés)
