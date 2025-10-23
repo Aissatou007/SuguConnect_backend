@@ -33,59 +33,128 @@ public class AuthService {
 
     /**
      * Authentifier un utilisateur (Admin, Producteur ou Consommateur)
+     * Recherche dans tous les repositories pour supporter l'héritage JOINED
      */
     public AuthResponse login(LoginRequest loginRequest) {
-        // Rechercher l'utilisateur par téléphone
-        Optional<Utilisateur> utilisateurOpt = utilisateurRepository.findByTelephone(loginRequest.telephone());
-        
-        if (utilisateurOpt.isEmpty()) {
-            throw new EntityNotFoundException("Aucun compte trouvé avec ce numéro de téléphone");
+        // Chercher dans chaque repository spécifique (Admin, Producteur, Consommateur)
+        Admin admin = adminRepository.findByTelephone(loginRequest.telephone());
+        if (admin != null) {
+            return authenticateAdmin(admin, loginRequest.motDePasse());
         }
         
-        Utilisateur utilisateur = utilisateurOpt.get();
+        Producteur producteur = producteurRepository.findByTelephone(loginRequest.telephone());
+        if (producteur != null) {
+            return authenticateProducteur(producteur, loginRequest.motDePasse());
+        }
         
-        // Vérifier le mot de passe
-        if (!passwordEncoder.matches(loginRequest.motDePasse(), utilisateur.getMotDePasse())) {
+        Consommateur consommateur = consommateurRepository.findByTelephone(loginRequest.telephone());
+        if (consommateur != null) {
+            return authenticateConsommateur(consommateur, loginRequest.motDePasse());
+        }
+        
+        // Aucun utilisateur trouvé
+        throw new EntityNotFoundException("Aucun compte trouvé avec ce numéro de téléphone");
+    }
+    
+    /**
+     * Authentifier un admin avec vérifications
+     */
+    private AuthResponse authenticateAdmin(Admin admin, String motDePasse) {
+        if (!passwordEncoder.matches(motDePasse, admin.getMotDePasse())) {
             throw new IllegalArgumentException("Mot de passe incorrect");
         }
         
-        // Vérifier si le compte est actif
-        if (!utilisateur.isActif()) {
+        if (!admin.isActif()) {
             throw new IllegalStateException("Votre compte est désactivé. Veuillez contacter l'administrateur.");
         }
         
-        // Vérification spécifique pour les producteurs
-        if (utilisateur.getRole() == Role.PRODUCTEUR) {
-            Producteur producteur = producteurRepository.findByTelephone(loginRequest.telephone());
-            
-            if (producteur.getStatutProducteur() == StatutProducteur.EN_ATTENTE) {
-                throw new IllegalStateException("Votre compte est en attente de validation par un administrateur");
-            }
-            
-            if (producteur.getStatutProducteur() == StatutProducteur.REFUSE) {
-                throw new IllegalStateException("Votre compte a été refusé. Raison : " + 
-                    (producteur.getMotifDeRejet() != null ? producteur.getMotifDeRejet() : "Non spécifiée"));
-            }
-        }
-        
-        // Générer le token JWT
         String token = jwtService.generateToken(
-            utilisateur.getId(),
-            utilisateur.getTelephone(),
-            utilisateur.getNom(),
-            utilisateur.getPrenom(),
-            utilisateur.getRole()
+            admin.getId(),
+            admin.getTelephone(),
+            admin.getNom(),
+            admin.getPrenom(),
+            admin.getRole()
         );
         
-        // Retourner la réponse avec le token
         return new AuthResponse(
             token,
-            utilisateur.getId(),
-            utilisateur.getNom(),
-            utilisateur.getPrenom(),
-            utilisateur.getEmail(),
-            utilisateur.getTelephone(),
-            utilisateur.getRole()
+            admin.getId(),
+            admin.getNom(),
+            admin.getPrenom(),
+            admin.getEmail(),
+            admin.getTelephone(),
+            admin.getRole()
+        );
+    }
+    
+    /**
+     * Authentifier un producteur avec vérifications de statut
+     */
+    private AuthResponse authenticateProducteur(Producteur producteur, String motDePasse) {
+        if (!passwordEncoder.matches(motDePasse, producteur.getMotDePasse())) {
+            throw new IllegalArgumentException("Mot de passe incorrect");
+        }
+        
+        if (!producteur.isActif()) {
+            throw new IllegalStateException("Votre compte est désactivé. Veuillez contacter l'administrateur.");
+        }
+        
+        if (producteur.getStatutProducteur() == StatutProducteur.EN_ATTENTE) {
+            throw new IllegalStateException("Votre compte est en attente de validation par un administrateur");
+        }
+        
+        if (producteur.getStatutProducteur() == StatutProducteur.REFUSE) {
+            throw new IllegalStateException("Votre compte a été refusé. Raison : " + 
+                (producteur.getMotifDeRejet() != null ? producteur.getMotifDeRejet() : "Non spécifiée"));
+        }
+        
+        String token = jwtService.generateToken(
+            producteur.getId(),
+            producteur.getTelephone(),
+            producteur.getNom(),
+            producteur.getPrenom(),
+            producteur.getRole()
+        );
+        
+        return new AuthResponse(
+            token,
+            producteur.getId(),
+            producteur.getNom(),
+            producteur.getPrenom(),
+            producteur.getEmail(),
+            producteur.getTelephone(),
+            producteur.getRole()
+        );
+    }
+    
+    /**
+     * Authentifier un consommateur avec vérifications
+     */
+    private AuthResponse authenticateConsommateur(Consommateur consommateur, String motDePasse) {
+        if (!passwordEncoder.matches(motDePasse, consommateur.getMotDePasse())) {
+            throw new IllegalArgumentException("Mot de passe incorrect");
+        }
+        
+        if (!consommateur.isActif()) {
+            throw new IllegalStateException("Votre compte est désactivé. Veuillez contacter l'administrateur.");
+        }
+        
+        String token = jwtService.generateToken(
+            consommateur.getId(),
+            consommateur.getTelephone(),
+            consommateur.getNom(),
+            consommateur.getPrenom(),
+            consommateur.getRole()
+        );
+        
+        return new AuthResponse(
+            token,
+            consommateur.getId(),
+            consommateur.getNom(),
+            consommateur.getPrenom(),
+            consommateur.getEmail(),
+            consommateur.getTelephone(),
+            consommateur.getRole()
         );
     }
     

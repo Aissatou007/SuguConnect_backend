@@ -229,12 +229,59 @@ public class AuthController {
             Map<String, Object> userInfo = new HashMap<>();
             userInfo.put("telephone", telephone);
             userInfo.put("role", role);
+            userInfo.put("roleWithPrefix", "ROLE_" + role);
             userInfo.put("message", "Utilisateur authentifié");
+            userInfo.put("authenticated", true);
             
             return ResponseEntity.ok(userInfo);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(createErrorResponse("Token invalide : " + e.getMessage()));
+        }
+    }
+    
+    @GetMapping("/debug-auth")
+    @Operation(
+            summary = "Déboguer l'authentification (DEV ONLY)",
+            description = "Affiche les détails de l'authentification actuelle pour le débogage"
+    )
+    public ResponseEntity<?> debugAuth(@RequestHeader(value = "Authorization", required = false) String authHeader) {
+        Map<String, Object> debugInfo = new HashMap<>();
+        
+        try {
+            debugInfo.put("authHeaderPresent", authHeader != null);
+            debugInfo.put("authHeader", authHeader != null ? authHeader.substring(0, Math.min(20, authHeader.length())) + "..." : "null");
+            
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                String token = authHeader.substring(7);
+                String telephone = authService.extractTelephone(token);
+                String role = authService.extractRole(token);
+                
+                debugInfo.put("tokenExtracted", true);
+                debugInfo.put("telephone", telephone);
+                debugInfo.put("role", role);
+                debugInfo.put("roleWithPrefix", "ROLE_" + role);
+                debugInfo.put("tokenValid", authService.validateToken(token, telephone));
+                
+                // Vérifier Spring Security Context
+                var authentication = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+                debugInfo.put("springSecurityAuthenticated", authentication != null && authentication.isAuthenticated());
+                
+                if (authentication != null) {
+                    debugInfo.put("principal", authentication.getPrincipal().toString());
+                    debugInfo.put("authorities", authentication.getAuthorities().toString());
+                } else {
+                    debugInfo.put("securityContextEmpty", true);
+                }
+            } else {
+                debugInfo.put("tokenFormat", "Invalid - must start with 'Bearer '");
+            }
+            
+            return ResponseEntity.ok(debugInfo);
+        } catch (Exception e) {
+            debugInfo.put("error", e.getMessage());
+            debugInfo.put("errorClass", e.getClass().getName());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(debugInfo);
         }
     }
 
