@@ -16,7 +16,11 @@ public record ProduitRequestDTO(
         @Schema(description = "Prix unitaire", example = "2500.0")
         float prixUnitaire,
         
-        @Schema(description = "Unité de mesure", example = "KILOGRAMME")
+        @Schema(
+            description = "Unité de mesure du produit",
+            example = "KILOGRAMME",
+            allowableValues = {"KILOGRAMME", "GRAMME", "TONNE", "LITRE", "MILLILITRE", "SAC", "BOTTE", "PIECE"}
+        )
         Unite unite,
         
         @Schema(description = "Stock disponible", example = "100")

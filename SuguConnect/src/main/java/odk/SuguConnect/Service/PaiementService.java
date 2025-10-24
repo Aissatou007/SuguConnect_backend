@@ -14,37 +14,19 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.List;
 
-/**
- * Service responsable UNIQUEMENT de la gestion des paiements
- * Respecte le principe SRP - Single Responsibility Principle
- */
 @Service
 @RequiredArgsConstructor
 public class PaiementService {
     private final PaiementRepository paiementRepository;
     private final CommandeRepository commandeRepository;
     private final NotificationService notificationService;
-    
-    /**
-     * Récupérer tous les paiements
-     * Responsabilité: Lecture de tous les paiements
-     */
+
     public List<Paiement> recupererTousLesPaiements() {
         return paiementRepository.findAll();
     }
-    
-    /**
-     * Récupérer un paiement par ID
-     * Responsabilité: Lecture d'un paiement spécifique
-     */
     public Paiement recupererPaiementParId(int id) {
         return findPaiementById(id);
     }
-    
-    /**
-     * Récupérer les paiements d'une commande
-     * Responsabilité: Lecture des paiements d'une commande
-     */
     public Paiement recupererPaiementParCommande(int commandeId) {
         Commande commande = commandeRepository.findById(commandeId)
                 .orElseThrow(() -> new EntityNotFoundException("Commande introuvable"));
@@ -55,15 +37,11 @@ public class PaiementService {
         
         return commande.getPaiement();
     }
-    
-    /**
-     * Valider un paiement
-     * Responsabilité: Marquer un paiement comme validé
-     */
+    // Valider un paiement
     @Transactional
     public Paiement validerPaiement(int paiementId, String referenceTransaction) {
         Paiement paiement = findPaiementById(paiementId);
-        
+
         // Vérifier que le paiement n'est pas déjà validé
         if (paiement.getStatutPaiement() == StatutPaiement.VALIDE) {
             throw new IllegalStateException("Ce paiement a déjà été validé");
@@ -87,10 +65,8 @@ public class PaiementService {
         return paiement;
     }
     
-    /**
-     * Marquer un paiement comme échoué
-     * Responsabilité: Marquer un paiement comme échoué
-     */
+    //Marquer un paiement comme échoué
+
     @Transactional
     public Paiement marquerPaiementEchoue(int paiementId, String motifEchec) {
         Paiement paiement = findPaiementById(paiementId);
@@ -124,10 +100,7 @@ public class PaiementService {
         return paiement;
     }
     
-    /**
-     * Rembourser un paiement
-     * Responsabilité: Gérer le remboursement d'un paiement
-     */
+    // Rembourser un paiement
     @Transactional
     public Paiement rembourserPaiement(int paiementId, String motifRemboursement) {
         Paiement paiement = findPaiementById(paiementId);
@@ -151,12 +124,7 @@ public class PaiementService {
         
         return paiement;
     }
-    
-    /**
-     * Initier un paiement mobile (Orange Money / Wave)
-     * Responsabilité: Simuler l'initiation d'un paiement mobile
-     * Note: Dans une vraie implémentation, ceci appellerait l'API du fournisseur
-     */
+
     @Transactional
     public String initierPaiementMobile(int paiementId, String numeroTelephone) {
         Paiement paiement = findPaiementById(paiementId);
@@ -171,11 +139,10 @@ public class PaiementService {
         paiementRepository.save(paiement);
         
         // TODO: Intégration avec Orange Money / Wave API
-        // Pour l'instant, retourner un message de simulation
         String provider = paiement.getMethodePaiement().toString();
         String message = String.format(
             "Paiement de %.2f FCFA initié via %s au numéro %s. " +
-            "Veuillez composer *144# (Orange Money) ou ouvrir Wave pour confirmer.",
+            "Veuillez composer *144# (Orange Money)  pour confirmer.",
             paiement.getMontant(),
             provider,
             numeroTelephone
@@ -185,8 +152,7 @@ public class PaiementService {
     }
     
     /**
-     * Webhook pour Orange Money / Wave
-     * Responsabilité: Recevoir les notifications de paiement des fournisseurs
+     * Webhook pour Orange Money
      * Note: À implémenter lors de l'intégration réelle avec les APIs
      */
     @Transactional
