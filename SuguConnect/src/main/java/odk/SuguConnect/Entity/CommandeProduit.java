@@ -1,5 +1,6 @@
 package odk.SuguConnect.Entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -22,6 +23,7 @@ public class CommandeProduit {
     private Produit produit;
     @ManyToOne
     @JoinColumn(name = "commande_id")
+    @JsonIgnore
     private Commande commande;
     private int quantite;
     private float prixUnitaire;

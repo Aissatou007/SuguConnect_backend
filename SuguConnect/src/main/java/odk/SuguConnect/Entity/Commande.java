@@ -1,5 +1,6 @@
 package odk.SuguConnect.Entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -22,6 +23,7 @@ public class Commande {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int idCommande;
     @OneToMany(mappedBy = "commande", cascade = CascadeType.ALL)
+    @JsonIgnore
     private List<CommandeProduit> commandeProduits = new ArrayList<>();
     private Double montantTotal;
     private StatutCommande statutCommande;
@@ -40,6 +42,7 @@ public class Commande {
     private Consommateur consommateur;
     @OneToOne
     @JoinColumn(name ="paiement_id")
+    @JsonIgnore
     private Paiement paiement;
     
     @OneToOne(mappedBy = "commande")

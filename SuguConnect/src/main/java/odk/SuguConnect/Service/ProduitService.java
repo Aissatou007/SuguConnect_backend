@@ -10,12 +10,27 @@ import odk.SuguConnect.Repository.ProducteurRepository;
 import odk.SuguConnect.Repository.ProduitRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.Arrays;
 import java.util.List;
+
 @Service
 public class ProduitService {
     private final ProduitRepository produitRepository ;
     private final ProducteurRepository producteurRepository ;
     private final CategorieRepository categorieRepository;
+
+    // Liste noire : produits interdits (non agricoles)
+    private final List<String> produitsInterdits = Arrays.asList(
+            "téléphone", "telephone", "voiture", "ordinateur", "pc",
+            "tv", "télé", "chaussure", "vetement", "parfum", "montre", "casque",
+            "laptop", "smartphone", "vélo", "bicyclette", "bijoux", "lunettes",
+            "sac", "portable", "tablette", "console", "jeux", "vêtements",
+            "cosmétiques", "maquillage", "jouet", "toys", "meubles", "furniture",
+            "électroménager", "appareil", "machine", "outil", "tools",
+            "médicament", "medicine", "pharmacie", "drug", "book", "livre",
+            "magazine", "journal", "cd", "dvd", "film", "music", "musique",
+            "instrument", "musical", "sport", "fitness", "gym", "beauté", "beauty"
+    );
 
     public ProduitService(ProduitRepository produitRepository, 
                          ProducteurRepository producteurRepository,
@@ -24,7 +39,11 @@ public class ProduitService {
         this.producteurRepository = producteurRepository;
         this.categorieRepository = categorieRepository;
     }
+
     public Produit ajouterProduit(Produit produit , int producteurId){
+        // Valider le nom du produit
+        validerNomProduit(produit.getNom());
+        
         Producteur producteur = producteurRepository.findById(producteurId)
                 .orElseThrow(() -> new EntityNotFoundException("Ce producteur n'existe pas"));
         if(producteur.getStatutProducteur() != StatutProducteur.ACCEPTE){
@@ -49,6 +68,7 @@ public class ProduitService {
         produitRepository.save(produit);
         return produit;
     }
+    
     public Produit modifierProduit(Produit produitModifie , int produitId , int producteurId){
         Produit produit = produitRepository.findById(produitId)
                 .orElseThrow(() -> new EntityNotFoundException("Ce produit n'existe pas"));
@@ -56,10 +76,13 @@ public class ProduitService {
             throw new SecurityException("Vous ne pouvez pas modifier ce produit");
         }
         
-        // Mettre à jour uniquement les champs non null
+        // Valider le nom du produit s'il est fourni
         if(produitModifie.getNom() != null) {
+            validerNomProduit(produitModifie.getNom());
             produit.setNom(produitModifie.getNom());
         }
+        
+        // Mettre à jour uniquement les champs non null
         if(produitModifie.getDescription() != null) {
             produit.setDescription(produitModifie.getDescription());
         }
@@ -84,11 +107,37 @@ public class ProduitService {
         produitRepository.save(produit);
         return produit;
     }
+    
+    // ========== Méthodes privées utilitaires ==========
+    
+    /**
+     * Valider le nom du produit pour s'assurer qu'il ne figure pas dans la liste noire
+     * @param nomProduit Le nom du produit à valider
+     * @throws IllegalArgumentException si le nom du produit est interdit
+     */
+    private void validerNomProduit(String nomProduit) {
+        if (nomProduit == null || nomProduit.trim().isEmpty()) {
+            throw new IllegalArgumentException("Le nom du produit ne peut pas être vide");
+        }
+        
+        String nomNormalise = nomProduit.trim().toLowerCase();
+        
+        // Vérifier si le nom du produit figure dans la liste noire
+        for (String produitInterdit : produitsInterdits) {
+            if (nomNormalise.contains(produitInterdit)) {
+                throw new IllegalArgumentException(
+                    "Le nom du produit '" + nomProduit + "' n'est pas autorisé. " +
+                    "Veuillez choisir un autre nom.");
+            }
+        }
+    }
+    
     public List<Produit> listerLesProduits(int producteurId){
         Producteur producteur = producteurRepository.findById(producteurId)
                 .orElseThrow(()->new EntityNotFoundException("Ce producteur n'existe pas"));
         return produitRepository.findByProducteur(producteur);
     }
+    
     public String supprimerProduit(int produitId , int producteurId){
         Produit produit = produitRepository.findById(produitId)
                 .orElseThrow(()->new EntityNotFoundException("Ce produit n'existe pas"));

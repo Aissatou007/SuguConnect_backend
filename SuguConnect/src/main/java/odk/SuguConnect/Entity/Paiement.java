@@ -1,5 +1,6 @@
 package odk.SuguConnect.Entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -27,5 +28,6 @@ public class Paiement {
     @JoinColumn(name = "consommateur")
     private Consommateur consommateur ;
     @OneToOne(mappedBy = "paiement")
+    @JsonIgnore
     private Commande commande ;
 }
