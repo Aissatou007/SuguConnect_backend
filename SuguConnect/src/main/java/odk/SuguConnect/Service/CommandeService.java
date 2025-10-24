@@ -2,6 +2,8 @@ package odk.SuguConnect.Service;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import odk.SuguConnect.DTO.Request.PasserCommandeRequestDTO;
+import odk.SuguConnect.DTO.Request.ProduitCommandeDTO;
 import odk.SuguConnect.Entity.*;
 import odk.SuguConnect.Enums.ModePaiement;
 import odk.SuguConnect.Enums.StatutCommande;
@@ -47,6 +49,33 @@ public class CommandeService {
         
         // Vider le panier
         viderPanier(panier);
+        
+        return commande;
+    }
+    
+    /**
+     * Passer une commande avec des produits spécifiques (sans utiliser le panier)
+     * Permet au consommateur de choisir directement les produits à commander
+     */
+    @Transactional
+    public Commande passerCommandeAvecProduits(int idConsommateur, PasserCommandeRequestDTO request) {
+        Consommateur consommateur = findConsommateurById(idConsommateur);
+        
+        // Créer la commande
+        Commande commande = creerCommande(consommateur, request.modePaiement());
+        
+        // Traiter les produits spécifiés
+        double montantTotal = traiterProduitsSpecifiques(request.produits(), commande);
+        commande.setMontantTotal(montantTotal);
+        commandeRepository.save(commande);
+        
+        // Créer le paiement
+        Paiement paiement = creerPaiement(commande, request.modePaiement(), montantTotal);
+        commande.setPaiement(paiement);
+        commandeRepository.save(commande);
+        
+        // Envoyer les notifications
+        envoyerNotificationsCommande(consommateur.getId(), commande, montantTotal);
         
         return commande;
     }
@@ -156,6 +185,29 @@ public class CommandeService {
         return total;
     }
     
+    /**
+     * Traiter les produits spécifiés dans la requête de commande
+     */
+    private double traiterProduitsSpecifiques(List<ProduitCommandeDTO> produits, Commande commande) {
+        double total = 0.0;
+        
+        for (ProduitCommandeDTO produitDTO : produits) {
+            Produit produit = findProduitById(produitDTO.produitId());
+            int quantite = produitDTO.quantite();
+            
+            // Vérifier et réduire le stock
+            verifierEtReduireStock(produit, quantite);
+            
+            // Créer l'article de commande
+            CommandeProduit commandeProduit = creerCommandeProduitDirect(commande, produit, quantite);
+            commande.getCommandeProduits().add(commandeProduit);
+            
+            total += produit.getPrixUnitaire() * quantite;
+        }
+        
+        return total;
+    }
+    
     private void verifierEtReduireStock(Produit produit, int quantite) {
         if (produit.getStockDisponible() < quantite) {
             throw new IllegalArgumentException(
@@ -174,6 +226,20 @@ public class CommandeService {
         commandeProduit.setQuantite(panierProduit.getQuantite());
         commandeProduit.setPrixUnitaire((float) panierProduit.getPrixUnitaire());
         return commandeProduit;
+    }
+    
+    private CommandeProduit creerCommandeProduitDirect(Commande commande, Produit produit, int quantite) {
+        CommandeProduit commandeProduit = new CommandeProduit();
+        commandeProduit.setCommande(commande);
+        commandeProduit.setProduit(produit);
+        commandeProduit.setQuantite(quantite);
+        commandeProduit.setPrixUnitaire(produit.getPrixUnitaire());
+        return commandeProduit;
+    }
+    
+    private Produit findProduitById(int id) {
+        return produitRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Produit introuvable avec ID: " + id));
     }
     
     private Paiement creerPaiement(Commande commande, ModePaiement modePaiement, double montant) {

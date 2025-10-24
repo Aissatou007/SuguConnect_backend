@@ -70,13 +70,13 @@ public class AdminService {
     public AdminResponseDTO createAdmin(AdminRequestDTO dto) {
         verifierRoleAdmin();
         if (adminRepository.existsByEmail(dto.email()) || adminRepository.findByTelephone(dto.telephone()) != null) {
-            throw new IllegalArgumentException("Cet admin (email/telephone) existe déjà");
+            throw new IllegalArgumentException("Cet admin  existe déjà");
         }
         Admin admin = AdminMapper.toEntity(dto, new Admin());
         admin.setMotDePasse(passwordEncoder.encode(dto.motDePasse()));
         admin.setRole(Role.ADMIN);
         admin.setDateInscription(LocalDate.now());
-        admin.setActif(true); // Le compte est actif par défaut
+        admin.setActif(true);
         Admin saved = adminRepository.save(admin);
         return AdminMapper.toResponse(saved);
     }
@@ -126,10 +126,6 @@ public class AdminService {
         
         return actif ? "Le compte admin a été activé avec succès" : "Le compte admin a été désactivé avec succès";
     }
-    /**
-     * Créer un nouveau producteur (par admin)
-     * Le mot de passe est encodé et le statut est EN_ATTENTE par défaut
-     */
     public Producteur createProducteur(ProducteurRequestDTO dto) {
         verifierRoleAdmin();
         
@@ -140,7 +136,7 @@ public class AdminService {
         Producteur producteur = ProducteurMapper.toEntity(dto, new Producteur());
         producteur.setMotDePasse(passwordEncoder.encode(dto.motDePasse()));
         producteur.setRole(Role.PRODUCTEUR);
-        producteur.setStatutProducteur(StatutProducteur.EN_ATTENTE);
+        producteur.setStatutProducteur(StatutProducteur.ACCEPTE);
         producteur.setDateInscription(LocalDate.now());
         producteur.setActif(true);
         
