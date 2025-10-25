@@ -89,6 +89,17 @@ public class ConsommateurService {
         return produitRepository.findAllByStockDisponibleGreaterThan(0);
     }
     
+    /**
+     * Filtrer les produits disponibles par nom
+     * Responsabilité: Recherche de produits par nom
+     */
+    public List<Produit> filtrerProduitsDisponiblesParNom(String nom) {
+        List<Produit> produits = produitRepository.findByNomContainingIgnoreCase(nom);
+        return produits.stream()
+                .filter(produit -> produit.getStockDisponible() > 0)
+                .toList();
+    }
+    
     // ========== Méthodes privées utilitaires ==========
     
     private void verifierCompteNonExistant(String telephone) {

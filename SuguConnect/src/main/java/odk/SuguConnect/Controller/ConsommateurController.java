@@ -123,6 +123,25 @@ public class ConsommateurController {
     public ResponseEntity<List<Produit>> voirProduitsDisponibles() {
         return ResponseEntity.ok(consommateurService.voirTousLesProduitsDisponibles());
     }
+    
+    @GetMapping(path = "/produits/recherche")
+    @Operation(
+            summary = "Rechercher des produits par nom",
+            description = "Retourne les produits disponibles dont le nom contient le terme recherché"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Produits trouvés"),
+            @ApiResponse(responseCode = "400", description = "Terme de recherche invalide")
+    })
+    public ResponseEntity<List<Produit>> rechercherProduitsParNom(
+            @Parameter(description = "Terme de recherche", required = true)
+            @RequestParam String nom) {
+        if (nom == null || nom.trim().isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        List<Produit> produits = consommateurService.filtrerProduitsDisponiblesParNom(nom);
+        return ResponseEntity.ok(produits);
+    }
 
     @PostMapping(path = "/{idConsommateur}/panier/ajouter/{idProduit}")
     @Operation(

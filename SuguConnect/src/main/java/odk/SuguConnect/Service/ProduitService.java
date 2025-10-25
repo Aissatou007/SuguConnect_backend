@@ -108,6 +108,34 @@ public class ProduitService {
         return produit;
     }
     
+    // ========== Méthodes publiques ==========
+    
+    public List<Produit> listerLesProduits(int producteurId){
+        Producteur producteur = producteurRepository.findById(producteurId)
+                .orElseThrow(()->new EntityNotFoundException("Ce producteur n'existe pas"));
+        return produitRepository.findByProducteur(producteur);
+    }
+    
+    public List<Produit> filtrerProduitsParNom(String nom) {
+        return produitRepository.findByNomContainingIgnoreCase(nom);
+    }
+    
+    public List<Produit> filtrerProduitsParNomEtStockDisponible(String nom) {
+        List<Produit> produits = produitRepository.findByNomContainingIgnoreCase(nom);
+        return produits.stream()
+                .filter(produit -> produit.getStockDisponible() > 0)
+                .toList();
+    }
+    
+    public String supprimerProduit(int produitId , int producteurId){
+        Produit produit = produitRepository.findById(produitId)
+                .orElseThrow(()->new EntityNotFoundException("Ce produit n'existe pas"));
+        if(produit.getProducteur().getId() != producteurId){
+            throw new IllegalArgumentException("Vous ne pouvez pas modifier ce produit");
+        } produitRepository.delete(produit);
+        return "Le produit a été supprimé";
+    }
+    
     // ========== Méthodes privées utilitaires ==========
     
     /**
@@ -131,20 +159,4 @@ public class ProduitService {
             }
         }
     }
-    
-    public List<Produit> listerLesProduits(int producteurId){
-        Producteur producteur = producteurRepository.findById(producteurId)
-                .orElseThrow(()->new EntityNotFoundException("Ce producteur n'existe pas"));
-        return produitRepository.findByProducteur(producteur);
-    }
-    
-    public String supprimerProduit(int produitId , int producteurId){
-        Produit produit = produitRepository.findById(produitId)
-                .orElseThrow(()->new EntityNotFoundException("Ce produit n'existe pas"));
-        if(produit.getProducteur().getId() != producteurId){
-            throw new IllegalArgumentException("Vous ne pouvez pas modifier ce produit");
-        } produitRepository.delete(produit);
-        return "Le produit a été supprimé";
-    }
-
 }

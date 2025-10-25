@@ -47,4 +47,8 @@ public class Commande {
     
     @OneToOne(mappedBy = "commande")
     private Avis avis;
+    
+    @ManyToOne
+    @JoinColumn(name = "livreur_id")
+    private Livreur livreurPrefere;
 }

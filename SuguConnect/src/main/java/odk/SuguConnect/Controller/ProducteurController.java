@@ -213,6 +213,31 @@ public class ProducteurController {
         List<Produit> produits = produitService.listerLesProduits(producteurId);
         return ResponseEntity.ok(produits);
     }
+    
+    @GetMapping(path = "/{producteurId}/produit/recherche")
+    @Operation(
+            summary = "Rechercher des produits d'un producteur par nom",
+            description = "Retourne les produits d'un producteur dont le nom contient le terme recherché"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Produits trouvés"),
+            @ApiResponse(responseCode = "400", description = "Terme de recherche invalide")
+    })
+    public ResponseEntity<List<Produit>> rechercherProduits(
+            @Parameter(description = "ID du producteur", required = true)
+            @PathVariable int producteurId,
+            @Parameter(description = "Terme de recherche", required = true)
+            @RequestParam String nom) {
+        if (nom == null || nom.trim().isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        List<Produit> produits = produitService.filtrerProduitsParNom(nom);
+        // Filtrer pour ne retourner que les produits de ce producteur
+        List<Produit> produitsDuProducteur = produits.stream()
+                .filter(produit -> produit.getProducteur().getId() == producteurId)
+                .toList();
+        return ResponseEntity.ok(produitsDuProducteur);
+    }
 
     @PutMapping(path = "/{producteurId}/produit/{produitId}", consumes = {"multipart/form-data"})
     @Operation(
