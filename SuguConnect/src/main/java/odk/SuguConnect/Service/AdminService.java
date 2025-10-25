@@ -25,9 +25,10 @@ public class AdminService {
     private final PasswordEncoder passwordEncoder;
     private final ConsommateurRepository consommateurRepository;
     private final ProduitRepository produitRepository;
+    private final LivreurRepository livreurRepository;
 
 
-    public AdminService(AdminRepository adminRepository, ProducteurRepository producteurRepository, CommandeRepository commandeRepository, PaiementRepository paiementRepository, PasswordEncoder passwordEncoder, ConsommateurRepository consommateurRepository, ProduitRepository produitRepository) {
+    public AdminService(AdminRepository adminRepository, ProducteurRepository producteurRepository, CommandeRepository commandeRepository, PaiementRepository paiementRepository, PasswordEncoder passwordEncoder, ConsommateurRepository consommateurRepository, ProduitRepository produitRepository, LivreurRepository livreurRepository) {
         this.adminRepository = adminRepository;
         this.producteurRepository = producteurRepository;
         this.commandeRepository = commandeRepository;
@@ -35,6 +36,7 @@ public class AdminService {
         this.passwordEncoder = passwordEncoder;
         this.consommateurRepository = consommateurRepository;
         this.produitRepository = produitRepository;
+        this.livreurRepository = livreurRepository;
     }
 
     private void verifierRoleAdmin() {
@@ -177,18 +179,10 @@ public class AdminService {
        verifierRoleAdmin();
         return paiementRepository.findAll();
     }
-
-
+    
+    public List<Livreur> recupererTousLesLivreurs() {
+        verifierRoleAdmin();
+        return livreurRepository.findAll();
+    }
 
 }
-
-
-
-
-
-
-
-
-
-
-

@@ -10,5 +10,6 @@ import java.util.List;
 public interface ProduitRepository extends JpaRepository<Produit, Integer> {
     List<Produit> findByProducteur(Producteur producteur);
     List<Produit> findAllByStockDisponibleGreaterThan(int stock);
-    List<Produit>findByCategorieId(int id);
+    List<Produit> findByCategorieId(int id);
+    List<Produit> findByNomContainingIgnoreCase(String nom);
 }
