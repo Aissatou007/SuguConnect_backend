@@ -16,9 +16,14 @@ import odk.SuguConnect.Enums.StatutLivraison;
 public class Livraison {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int id ;
+    private int id;
     private ModeLivraison modeLivraison;
-    private StatutLivraison statutLivraison ;
+    private StatutLivraison statutLivraison;
+    
     @OneToOne
     private Commande commande;
+    
+    @ManyToOne
+    @JoinColumn(name = "livreur_id")
+    private Livreur livreur;
 }
