@@ -51,10 +51,13 @@ public class CommandeMapper {
             return null;
         }
         
+        Integer producteurId = produit.getProducteur() != null ? produit.getProducteur().getId() : null;
+        
         return new ProduitSimpleDTO(
                 produit.getId(),
                 produit.getNom(),
-                produit.getPrixUnitaire()
+                produit.getPrixUnitaire(),
+                producteurId
         );
     }
     

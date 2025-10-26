@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import odk.SuguConnect.DTO.Request.ConsommateurRequestDTO;
+import odk.SuguConnect.DTO.Request.PasserCommandePanierRequestDTO;
 import odk.SuguConnect.DTO.Request.PasserCommandeRequestDTO;
 import odk.SuguConnect.DTO.Responses.ConsommateurResponseDTO;
 import odk.SuguConnect.Entity.Commande;
@@ -17,9 +18,11 @@ import odk.SuguConnect.Mapper.CommandeMapper;
 import odk.SuguConnect.Service.CommandeService;
 import odk.SuguConnect.Service.ConsommateurService;
 import odk.SuguConnect.Service.PanierService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.persistence.EntityNotFoundException;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -185,17 +188,28 @@ public class ConsommateurController {
     @GetMapping(path = "/{idConsommateur}/panier")
     @Operation(
             summary = "Voir le panier",
-            description = "Permet de consulter le contenu du panier d'un consommateur"
+            description = "Permet de consulter le contenu du panier d'un consommateur. Retourne le panier complet avec tous les produits, ou un message si le panier est vide."
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Panier récupéré"),
-            @ApiResponse(responseCode = "404", description = "Panier vide ou consommateur non trouvé")
+            @ApiResponse(responseCode = "200", description = "Panier récupéré avec succès"),
+            @ApiResponse(responseCode = "204", description = "Panier vide - aucun produit dans le panier"),
+            @ApiResponse(responseCode = "404", description = "Consommateur non trouvé")
     })
-    public ResponseEntity<Panier> voirPanier(
+    public ResponseEntity<?> voirPanier(
             @Parameter(description = "ID du consommateur", required = true)
             @PathVariable int idConsommateur) {
-        Panier panier = panierService.voirPanier(idConsommateur);
-        return ResponseEntity.ok(panier);
+        try {
+            Panier panier = panierService.voirPanier(idConsommateur);
+            
+            // Check if panier is empty
+            if (panier.getProduits() == null || panier.getProduits().isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NO_CONTENT).body("Aucun produit dans le panier");
+            }
+            
+            return ResponseEntity.ok(panier);
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @GetMapping(path = "/{idConsommateur}/commandes")
@@ -254,6 +268,27 @@ public class ConsommateurController {
             )
             @RequestBody PasserCommandeRequestDTO request) {
         Commande commande = commandeService.passerCommandeAvecProduits(idConsommateur, request);
+        return ResponseEntity.ok(CommandeMapper.toResponse(commande));
+    }
+    
+    @PostMapping(path = "/{idConsommateur}/commande/panier")
+    @Operation(
+            summary = "Passer une commande à partir de produits spécifiques du panier",
+            description = "Permet à un consommateur de passer une commande en choisissant des produits spécifiques de son panier avec leurs quantités"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Commande passée avec succès"),
+            @ApiResponse(responseCode = "400", description = "Stock insuffisant, quantité invalide ou produit non trouvé dans le panier"),
+            @ApiResponse(responseCode = "404", description = "Consommateur non trouvé")
+    })
+    public ResponseEntity<odk.SuguConnect.DTO.Responses.CommandeResponseDTO> passerCommandeDepuisPanier(
+            @Parameter(description = "ID du consommateur", required = true)
+            @PathVariable int idConsommateur,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Produits du panier à commander et mode de paiement"
+            )
+            @RequestBody PasserCommandePanierRequestDTO request) {
+        Commande commande = commandeService.passerCommandeAvecProduitsDuPanier(idConsommateur, request);
         return ResponseEntity.ok(CommandeMapper.toResponse(commande));
     }
     

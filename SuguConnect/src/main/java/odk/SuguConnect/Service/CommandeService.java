@@ -2,6 +2,7 @@ package odk.SuguConnect.Service;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import odk.SuguConnect.DTO.Request.PasserCommandePanierRequestDTO;
 import odk.SuguConnect.DTO.Request.PasserCommandeRequestDTO;
 import odk.SuguConnect.DTO.Request.ProduitCommandeDTO;
 import odk.SuguConnect.Entity.*;
@@ -24,6 +25,7 @@ public class CommandeService {
     private final ConsommateurRepository consommateurRepository;
     private final PaiementRepository paiementRepository;
     private final PanierRepository panierRepository;
+    private final PanierProduitRepository panierProduitRepository;
     private final NotificationService notificationService;
 
     @Transactional
@@ -79,6 +81,117 @@ public class CommandeService {
         
         return commande;
     }
+    
+    @Transactional
+    public Commande passerCommandeAvecProduitsDuPanier(int idConsommateur, PasserCommandePanierRequestDTO request) {
+        Consommateur consommateur = findConsommateurById(idConsommateur);
+        Panier panier = validerPanier(consommateur);
+        
+        // Créer la commande
+        Commande commande = creerCommande(consommateur, request.modePaiement());
+        
+        // Traiter les produits spécifiés du panier
+        double montantTotal = traiterProduitsSpecifiquesDuPanier(request.produits(), commande, panier);
+        commande.setMontantTotal(montantTotal);
+        commandeRepository.save(commande);
+        
+        // Créer le paiement
+        Paiement paiement = creerPaiement(commande, request.modePaiement(), montantTotal);
+        commande.setPaiement(paiement);
+        commandeRepository.save(commande);
+        
+        // Envoyer les notifications
+        envoyerNotificationsCommande(consommateur.getId(), commande, montantTotal);
+        
+        // Retirer les produits commandés du panier
+        retirerProduitsDuPanier(panier, request.produits());
+        
+        return commande;
+    }
+    
+    /**
+     * Traiter les produits spécifiés dans la requête de commande
+     */
+    private double traiterProduitsSpecifiques(List<ProduitCommandeDTO> produits, Commande commande) {
+        double total = 0.0;
+        
+        for (ProduitCommandeDTO produitDTO : produits) {
+            Produit produit = findProduitById(produitDTO.produitId());
+            int quantite = produitDTO.quantite();
+            
+            // Vérifier et réduire le stock
+            verifierEtReduireStock(produit, quantite);
+            
+            // Créer l'article de commande
+            CommandeProduit commandeProduit = creerCommandeProduitDirect(commande, produit, quantite);
+            commande.getCommandeProduits().add(commandeProduit);
+            
+            total += produit.getPrixUnitaire() * quantite;
+        }
+        
+        return total;
+    }
+    
+    /**
+     * Traiter les produits spécifiés dans la requête de commande à partir du panier
+     */
+    private double traiterProduitsSpecifiquesDuPanier(List<ProduitCommandeDTO> produits, Commande commande, Panier panier) {
+        double total = 0.0;
+        
+        for (ProduitCommandeDTO produitDTO : produits) {
+            // Trouver le produit dans le panier
+            PanierProduit panierProduit = trouverProduitDansPanier(panier, produitDTO.produitId());
+            int quantite = produitDTO.quantite();
+            
+            // Vérifier que la quantité demandée est disponible dans le panier
+            if (quantite > panierProduit.getQuantite()) {
+                throw new IllegalArgumentException(
+                    String.format("Quantité demandée (%d) supérieure à la quantité dans le panier (%d) pour le produit %s",
+                        quantite, panierProduit.getQuantite(), panierProduit.getProduit().getNom())
+                );
+            }
+            
+            // Vérifier et réduire le stock
+            Produit produit = panierProduit.getProduit();
+            verifierEtReduireStock(produit, quantite);
+            
+            // Créer l'article de commande
+            CommandeProduit commandeProduit = creerCommandeProduitDirect(commande, produit, quantite);
+            commande.getCommandeProduits().add(commandeProduit);
+            
+            total += produit.getPrixUnitaire() * quantite;
+        }
+        
+        return total;
+    }
+    
+    private PanierProduit trouverProduitDansPanier(Panier panier, int produitId) {
+        return panier.getPanierProduits().stream()
+                .filter(pp -> pp.getProduit().getId() == produitId)
+                .findFirst()
+                .orElseThrow(() -> new EntityNotFoundException(
+                    String.format("Le produit avec ID %d n'est pas dans le panier", produitId)));
+    }
+    
+    private void retirerProduitsDuPanier(Panier panier, List<ProduitCommandeDTO> produits) {
+        for (ProduitCommandeDTO produitDTO : produits) {
+            PanierProduit panierProduit = trouverProduitDansPanier(panier, produitDTO.produitId());
+            int quantiteRestante = panierProduit.getQuantite() - produitDTO.quantite();
+            
+            if (quantiteRestante <= 0) {
+                // Retirer complètement le produit du panier
+                panier.getPanierProduits().remove(panierProduit);
+                panierProduitRepository.delete(panierProduit);
+                panier.getProduits().removeIf(p -> p.getId() == produitDTO.produitId());
+            } else {
+                // Mettre à jour la quantité
+                panierProduit.setQuantite(quantiteRestante);
+                panierProduitRepository.save(panierProduit);
+            }
+        }
+        panierRepository.save(panier);
+    }
+    
     public List<Commande> voirCommandesParConsommateur(int idConsommateur) {
         Consommateur consommateur = findConsommateurById(idConsommateur);
         List<Commande> commandes = commandeRepository.findByConsommateur(consommateur);
@@ -180,29 +293,6 @@ public class CommandeService {
             commande.getCommandeProduits().add(commandeProduit);
             
             total += panierProduit.getPrixUnitaire() * quantite;
-        }
-        
-        return total;
-    }
-    
-    /**
-     * Traiter les produits spécifiés dans la requête de commande
-     */
-    private double traiterProduitsSpecifiques(List<ProduitCommandeDTO> produits, Commande commande) {
-        double total = 0.0;
-        
-        for (ProduitCommandeDTO produitDTO : produits) {
-            Produit produit = findProduitById(produitDTO.produitId());
-            int quantite = produitDTO.quantite();
-            
-            // Vérifier et réduire le stock
-            verifierEtReduireStock(produit, quantite);
-            
-            // Créer l'article de commande
-            CommandeProduit commandeProduit = creerCommandeProduitDirect(commande, produit, quantite);
-            commande.getCommandeProduits().add(commandeProduit);
-            
-            total += produit.getPrixUnitaire() * quantite;
         }
         
         return total;

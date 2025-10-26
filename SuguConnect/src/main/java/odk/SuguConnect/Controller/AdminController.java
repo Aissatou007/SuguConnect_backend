@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import odk.SuguConnect.DTO.Request.AdminRequestDTO;
 import odk.SuguConnect.DTO.Request.ProducteurRequestDTO;
 import odk.SuguConnect.DTO.Responses.AdminResponseDTO;
+import odk.SuguConnect.DTO.Responses.LivreurResponseDTO;
 import odk.SuguConnect.Entity.*;
 import odk.SuguConnect.Enums.StatutProducteur;
 import odk.SuguConnect.Service.AdminService;
@@ -206,6 +207,17 @@ public class AdminController {
     @ApiResponse(responseCode = "200", description = "Liste des paiements récupérée")
     public ResponseEntity<List<Paiement>> voirTousLesPaiements() {
         return ResponseEntity.ok(adminService.recupererTousLesPaiements());
+    }
+
+    @GetMapping("/commandes/livreurs")
+    @Operation(
+            summary = "Récupérer les livreurs disponibles pour une commande",
+            description = "Permet à un administrateur de voir la liste des livreurs disponibles lorsqu'il crée ou gère une commande"
+    )
+    @ApiResponse(responseCode = "200", description = "Liste des livreurs disponibles récupérée")
+    public ResponseEntity<List<LivreurResponseDTO>> voirLivreursPourCommande() {
+        List<LivreurResponseDTO> livreurs = adminService.recupererLivreursDisponibles();
+        return ResponseEntity.ok(livreurs);
     }
 
 

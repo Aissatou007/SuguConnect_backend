@@ -48,9 +48,13 @@ public class SecurityConfig {
                         
                         // Inscriptions (Consommateur et Producteur)
                         .requestMatchers(
-                                "/consommateur/inscription",
-                                "/producteur/inscription"
+                                "/consommateur/inscription"
                         ).permitAll()
+                        
+                        // Producteur inscription now restricted to ADMIN only
+                        .requestMatchers(
+                                "/producteur/inscription"
+                        ).hasRole("ADMIN")
                         
                         // Consultation publique - Liste des producteurs
                         .requestMatchers(

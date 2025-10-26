@@ -4,10 +4,12 @@ import jakarta.persistence.EntityNotFoundException;
 import odk.SuguConnect.DTO.Request.AdminRequestDTO;
 import odk.SuguConnect.DTO.Request.ProducteurRequestDTO;
 import odk.SuguConnect.DTO.Responses.AdminResponseDTO;
+import odk.SuguConnect.DTO.Responses.LivreurResponseDTO;
 import odk.SuguConnect.Entity.*;
 import odk.SuguConnect.Enums.Role;
 import odk.SuguConnect.Enums.StatutProducteur;
 import odk.SuguConnect.Mapper.AdminMapper;
+import odk.SuguConnect.Mapper.LivreurMapper;
 import odk.SuguConnect.Mapper.ProducteurMapper;
 import odk.SuguConnect.Repository.*;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -183,6 +185,13 @@ public class AdminService {
     public List<Livreur> recupererTousLesLivreurs() {
         verifierRoleAdmin();
         return livreurRepository.findAll();
+    }
+    
+    public List<LivreurResponseDTO> recupererLivreursDisponibles() {
+        verifierRoleAdmin();
+        return livreurRepository.findByDisponibleTrue().stream()
+                .map(LivreurMapper::toResponse)
+                .toList();
     }
 
 }
