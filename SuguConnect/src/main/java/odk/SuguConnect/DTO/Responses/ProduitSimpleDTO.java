@@ -11,6 +11,9 @@ public record ProduitSimpleDTO(
         String nom,
         
         @Schema(description = "Prix unitaire", example = "2500.0")
-        float prixUnitaire
+        float prixUnitaire,
+        
+        @Schema(description = "ID du producteur qui a créé le produit", example = "1")
+        Integer producteurId
 ) {
 }

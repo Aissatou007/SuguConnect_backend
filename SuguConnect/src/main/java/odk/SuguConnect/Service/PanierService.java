@@ -63,7 +63,18 @@ public class PanierService {
     
     public Panier voirPanier(int consommateurId) {
         Consommateur consommateur = findConsommateurById(consommateurId);
-        return validerPanierNonVide(consommateur);
+        Panier panier = consommateur.getPanier();
+        
+        // Return the panier even if it's empty (instead of throwing exception)
+        if (panier == null) {
+            // Create a new empty panier if it doesn't exist
+            panier = new Panier();
+            panier.setConsommateur(consommateur);
+            panier = panierRepository.save(panier);
+            consommateur.setPanier(panier);
+        }
+        
+        return panier;
     }
     
     // ========== Méthodes privées utilitaires ==========
@@ -89,6 +100,7 @@ public class PanierService {
         return panier;
     }
     
+    // Modified to not throw exception for empty panier
     private Panier validerPanierNonVide(Consommateur consommateur) {
         Panier panier = consommateur.getPanier();
         if (panier == null || panier.getProduits().isEmpty()) {
