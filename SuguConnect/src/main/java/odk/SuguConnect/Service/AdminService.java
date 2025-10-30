@@ -117,9 +117,8 @@ public class AdminService {
         return "Le compte admin a été supprimé avec succès";
     }
     
-    /**
-     * Activer ou désactiver un compte admin
-     */
+    //Activer ou désactiver un compte admin
+
     public String toggleAdminStatus(int id, boolean actif) {
         verifierRoleAdmin();
         Admin admin = adminRepository.findById(id).orElseThrow(() ->

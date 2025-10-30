@@ -2,7 +2,7 @@ package odk.SuguConnect.Repository;
 
 import odk.SuguConnect.Entity.Notification;
 import odk.SuguConnect.Enums.TypeMessage;
-import odk.SuguConnect.Interface.Utilisateur;
+import odk.SuguConnect.Classe_abstraite.Utilisateur;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

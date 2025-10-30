@@ -35,20 +35,17 @@ public class FileStorageService {
         }
     }
 
-    /**
-     * Stocke un fichier unique
-     */
     public String storeFile(MultipartFile file) {
-        // Nettoyer le nom du fichier
+
         String originalFileName = StringUtils.cleanPath(file.getOriginalFilename());
         
         try {
-            // Vérifier si le fichier contient des caractères invalides
+
             if(originalFileName.contains("..")) {
                 throw new RuntimeException("Le nom du fichier contient une séquence de chemin invalide " + originalFileName);
             }
 
-            // Générer un nom de fichier unique
+
             String fileExtension = "";
             if(originalFileName.contains(".")) {
                 fileExtension = originalFileName.substring(originalFileName.lastIndexOf("."));
@@ -64,10 +61,6 @@ public class FileStorageService {
             throw new RuntimeException("Impossible de stocker le fichier " + originalFileName + ". Veuillez réessayer!", ex);
         }
     }
-
-    /**
-     * Stocke plusieurs fichiers
-     */
     public List<String> storeFiles(MultipartFile[] files) {
         List<String> fileNames = new ArrayList<>();
         
@@ -83,9 +76,6 @@ public class FileStorageService {
         return fileNames;
     }
 
-    /**
-     * Charge un fichier en tant que Resource
-     */
     public Resource loadFileAsResource(String fileName) {
         try {
             Path filePath = this.fileStorageLocation.resolve(fileName).normalize();
@@ -101,9 +91,6 @@ public class FileStorageService {
         }
     }
 
-    /**
-     * Supprime un fichier
-     */
     public void deleteFile(String fileName) {
         try {
             Path filePath = this.fileStorageLocation.resolve(fileName).normalize();
@@ -113,9 +100,6 @@ public class FileStorageService {
         }
     }
 
-    /**
-     * Supprime plusieurs fichiers
-     */
     public void deleteFiles(List<String> fileNames) {
         if (fileNames != null && !fileNames.isEmpty()) {
             for (String fileName : fileNames) {
@@ -124,9 +108,6 @@ public class FileStorageService {
         }
     }
 
-    /**
-     * Obtient le chemin du répertoire de stockage
-     */
     public Path getFileStorageLocation() {
         return fileStorageLocation;
     }

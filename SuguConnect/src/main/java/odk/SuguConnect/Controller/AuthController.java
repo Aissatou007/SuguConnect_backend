@@ -284,10 +284,6 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(debugInfo);
         }
     }
-
-    /**
-     * Méthode utilitaire pour créer une réponse d'erreur standardisée
-     */
     private Map<String, String> createErrorResponse(String message) {
         Map<String, String> error = new HashMap<>();
         error.put("error", message);

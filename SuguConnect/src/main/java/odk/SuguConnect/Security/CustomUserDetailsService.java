@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import odk.SuguConnect.Entity.Admin;
 import odk.SuguConnect.Entity.Consommateur;
 import odk.SuguConnect.Entity.Producteur;
-import odk.SuguConnect.Interface.Utilisateur;
+import odk.SuguConnect.Classe_abstraite.Utilisateur;
 import odk.SuguConnect.Repository.AdminRepository;
 import odk.SuguConnect.Repository.ConsommateurRepository;
 import odk.SuguConnect.Repository.ProducteurRepository;

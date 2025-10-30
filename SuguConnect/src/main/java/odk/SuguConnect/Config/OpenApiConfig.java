@@ -21,7 +21,6 @@ public class OpenApiConfig {
     public OpenAPI suguConnectOpenAPI() {
         // Nom du schéma de sécurité
         final String securitySchemeName = "bearerAuth";
-        
         return new OpenAPI()
                 .info(new Info()
                         .title("API SuguConnect")
@@ -29,14 +28,12 @@ public class OpenApiConfig {
                                 "**Authentification JWT:**\n" +
                                 "1. Utilisez `/auth/login/admin`, `/auth/login/producteur`, ou `/auth/login/consommateur` pour vous connecter\n" +
                                 "2. Copiez le token JWT de la réponse\n" +
-                                "3. Cliquez sur le bouton 🔓 **Authorize** en haut\n" +
-                                "4. Collez le token (sans 'Bearer') et cliquez sur **Authorize**\n" +
+                                "3. Cliquez sur le bouton  **Authorize** en haut\n" +
+                                "4. Collez le token  et cliquez sur **Authorize**\n" +
                                 "5. Vous pouvez maintenant tester les endpoints protégés")
                         .version("1.0.0")
                         .contact(new Contact()
-                                .name("Équipe SuguConnect")
-                                .email("contact@suguconnect.com")
-                                .url("https://suguconnect.com"))
+                                .name("Équipe SuguConnect"))
                         .license(new License()
                                 .name("Apache 2.0")
                                 .url("https://www.apache.org/licenses/LICENSE-2.0")))
@@ -69,22 +66,22 @@ public class OpenApiConfig {
                                 .description("Connexion et gestion des tokens JWT"),
                         new Tag()
                                 .name("Administrateur")
-                                .description("Gestion des administrateurs et supervision de la plateforme (🔒 Token ADMIN requis)"),
+                                .description("Gestion des administrateurs et supervision de la plateforme ( Token ADMIN requis)"),
                         new Tag()
                                 .name("Producteur")
-                                .description("Gestion des producteurs et de leurs produits (🔒 Token PRODUCTEUR ou ADMIN requis)"),
+                                .description("Gestion des producteurs et de leurs produits ( Token PRODUCTEUR ou ADMIN requis)"),
                         new Tag()
                                 .name("Consommateur")
-                                .description("Gestion des consommateurs, paniers et commandes (🔒 Token CONSOMMATEUR ou ADMIN requis)"),
+                                .description("Gestion des consommateurs, paniers et commandes ( Token CONSOMMATEUR ou ADMIN requis)"),
                         new Tag()
                                 .name("Catégorie")
                                 .description("Gestion des catégories de produits"),
                         new Tag()
                                 .name("Paiement")
-                                .description("Gestion des paiements et transactions (🔒 Token CONSOMMATEUR ou ADMIN requis)"),
+                                .description("Gestion des paiements et transactions ( Token CONSOMMATEUR ou ADMIN requis)"),
                         new Tag()
                                 .name("Notification")
-                                .description("Gestion des notifications utilisateurs avec actions et durée de vie (🔒 Token requis)")
+                                .description("Gestion des notifications utilisateurs avec actions et durée de vie ( Token requis)")
                 ));
     }
 }

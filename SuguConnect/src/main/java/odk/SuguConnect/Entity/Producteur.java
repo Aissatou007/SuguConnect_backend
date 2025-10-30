@@ -7,7 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import odk.SuguConnect.Enums.StatutProducteur;
-import odk.SuguConnect.Interface.Utilisateur;
+import odk.SuguConnect.Classe_abstraite.Utilisateur;
 
 import java.util.List;
 

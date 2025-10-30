@@ -25,10 +25,7 @@ public class ProducteurService {
     private final ProducteurRepository producteurRepository;
     private final PasswordEncoder passwordEncoder;
 
-    /**
-     * Inscrire un nouveau producteur
-     * Responsabilité: Création de compte producteur uniquement
-     */
+
     public String inscriptionProducteur(ProducteurRequestDTO dto, String telephone) {
         verifierCompteNonExistant(telephone);
         
@@ -102,8 +99,7 @@ public class ProducteurService {
         producteur.setEmail(dto.email());
         producteur.setLocalisation(dto.localisation());
         producteur.setDescription(dto.description());
-        
-        // Encoder le mot de passe uniquement s'il est fourni
+
         if (dto.motDePasse() != null && !dto.motDePasse().isEmpty()) {
             producteur.setMotDePasse(passwordEncoder.encode(dto.motDePasse()));
         }

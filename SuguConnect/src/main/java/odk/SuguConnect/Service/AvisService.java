@@ -73,7 +73,7 @@ public class AvisService {
         avis.setNote(note);
         avis.setCommentaire(commentaire);
         avis.setDateAvis(LocalDateTime.now());
-        avis.setValide(true); // Auto-validation (ou false si modération par admin requise)
+        avis.setValide(true);
 
         return avisRepository.save(avis);
     }
