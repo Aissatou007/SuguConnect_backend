@@ -42,7 +42,7 @@ public class NotificationService {
 
     @Transactional
     public Notification creerNotification(int destinataireId, TypeMessage typeMessage, String message, String action) {
-        return creerNotification(destinataireId, typeMessage, message, action, 168); // 7 jours = 168 heures
+        return creerNotification(destinataireId, typeMessage, message, action, 168);
     }
 
     @Transactional
@@ -55,12 +55,10 @@ public class NotificationService {
         String message = String.format("Votre commande #%d d'un montant de %.2f FCFA a été passée avec succès.", 
                 commandeId, montant);
         String action = "/commandes/" + commandeId;
-        creerNotification(consommateurId, TypeMessage.COMMANDE_PASSEE, message, action, 720); // 30 jours
+        creerNotification(consommateurId, TypeMessage.COMMANDE_PASSEE, message, action, 720);
     }
 
-    /**
-     * Notification de commande validée
-     */
+    // Notification de commande validée
     @Transactional
     public void notifierCommandeValidee(int consommateurId, int commandeId) {
         String message = String.format("Votre commande #%d a été validée et sera bientôt livrée.", commandeId);
@@ -69,7 +67,6 @@ public class NotificationService {
     }
 
     // Notification de commande refusée
-
     @Transactional
     public void notifierCommandeRefusee(int consommateurId, int commandeId, String raison) {
         String message = String.format("Votre commande #%d a été refusée. Raison : %s", commandeId, raison);
@@ -78,7 +75,6 @@ public class NotificationService {
     }
 
     // Notification de commande en livraison
-
     @Transactional
     public void notifierCommandeEnLivraison(int consommateurId, int commandeId) {
         String message = String.format("Votre commande #%d est en cours de livraison.", commandeId);
@@ -87,7 +83,6 @@ public class NotificationService {
     }
 
     //Notification de commande livrée
-
     @Transactional
     public void notifierCommandeLivree(int consommateurId, int commandeId) {
         String message = String.format("Votre commande #%d a été livrée. Merci de confirmer la réception.", commandeId);
@@ -96,7 +91,6 @@ public class NotificationService {
     }
 
     // Notification de paiement reçu
-
     @Transactional
     public void notifierPaiementRecu(int consommateurId, int paiementId, double montant) {
         String message = String.format("Votre paiement de %.2f FCFA a été reçu avec succès.", montant);
@@ -105,7 +99,6 @@ public class NotificationService {
     }
 
     //Notification de remboursement effectué
-
     @Transactional
     public void notifierRemboursementEffectue(int consommateurId, double montant) {
         String message = String.format("Un remboursement de %.2f FCFA a été effectué sur votre compte.", montant);
@@ -113,7 +106,6 @@ public class NotificationService {
     }
 
     // Notification de revenu producteur
-
     @Transactional
     public void notifierRevenuProducteur(int producteurId, int commandeId, double montant) {
         String message = String.format("Félicitations ! Vous avez reçu %.2f FCFA pour la commande #%d validée par le client.", 
@@ -183,7 +175,6 @@ public class NotificationService {
     }
 
     // Récupérer toutes les notifications d'un utilisateur
-
     public List<Notification> getNotifications(int utilisateurId) {
         Utilisateur utilisateur = utilisateurRepository.findById(utilisateurId)
                 .orElseThrow(() -> new EntityNotFoundException("Utilisateur non trouvé"));
@@ -191,7 +182,6 @@ public class NotificationService {
     }
 
     // Récupérer les notifications non lues
-
     public List<Notification> getNotificationsNonLues(int utilisateurId) {
         Utilisateur utilisateur = utilisateurRepository.findById(utilisateurId)
                 .orElseThrow(() -> new EntityNotFoundException("Utilisateur non trouvé"));
@@ -209,7 +199,6 @@ public class NotificationService {
     }
 
     // Marquer toutes les notifications d'un utilisateur comme lues
-
     @Transactional
     public void marquerToutesCommeLues(int utilisateurId) {
         List<Notification> notifications = getNotificationsNonLues(utilisateurId);
@@ -218,7 +207,6 @@ public class NotificationService {
     }
 
     // Compter les notifications non lues
-
     public long compterNotificationsNonLues(int utilisateurId) {
         Utilisateur utilisateur = utilisateurRepository.findById(utilisateurId)
                 .orElseThrow(() -> new EntityNotFoundException("Utilisateur non trouvé"));
@@ -226,7 +214,6 @@ public class NotificationService {
     }
 
     // Supprimer une notification
-
     @Transactional
     public void supprimerNotification(int notificationId) {
         if (!notificationRepository.existsById(notificationId)) {
@@ -234,9 +221,6 @@ public class NotificationService {
         }
         notificationRepository.deleteById(notificationId);
     }
-
-    //Nettoyage automatique des notifications expirées (tous les jours à 2h du matin)
-
     @Scheduled(cron = "0 0 2 * * *")
     @Transactional
     public void nettoyerNotificationsExpirees() {
@@ -244,8 +228,6 @@ public class NotificationService {
         notificationRepository.deleteAll(notificationsExpirees);
         System.out.println("Nettoyage automatique : " + notificationsExpirees.size() + " notifications expirées supprimées.");
     }
-
-    //Récupérer les notifications récentes (7 derniers jours)
 
     public List<Notification> getNotificationsRecentes(int utilisateurId) {
         Utilisateur utilisateur = utilisateurRepository.findById(utilisateurId)

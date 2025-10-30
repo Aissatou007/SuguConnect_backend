@@ -33,7 +33,7 @@ public class Commande {
     private LocalDate dateCommande;
     private String motifRejet;
     
-    // Validation de réception par le consommateur
+
     private boolean receptionValidee = false;
     private LocalDate dateReceptionValidee;
     

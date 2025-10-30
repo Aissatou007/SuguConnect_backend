@@ -15,10 +15,6 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.util.List;
 
-/**
- * Service responsable UNIQUEMENT de la gestion des producteurs (CRUD)
- * Respecte le principe SRP - Single Responsibility Principle
- */
 @Service
 @RequiredArgsConstructor
 public class ProducteurService {
@@ -41,8 +37,6 @@ public class ProducteurService {
                 .map(ProducteurMapper::toResponse)
                 .toList();
     }
-    
-    //Récupérer un producteur par ID
 
     public ProducteurResponseDTO recupererUnProducteur(int id) {
         Producteur producteur = findProducteurById(id);

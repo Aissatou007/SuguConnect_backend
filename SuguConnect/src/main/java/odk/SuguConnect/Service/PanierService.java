@@ -28,14 +28,11 @@ public class PanierService {
         Consommateur consommateur = findConsommateurById(consommateurId);
         Produit produit = findProduitById(produitId);
         Panier panier = obtenirOuCreerPanier(consommateur);
-        
-        // Vérifier le stock
+
         verifierStockDisponible(produit, quantite);
-        
-        // Ajouter ou mettre à jour le produit dans le panier
+
         ajouterOuMettreAJourPanierProduit(panier, produit, quantite);
-        
-        // Ajouter à la liste produits (compatibilité)
+
         if (!panier.getProduits().contains(produit)) {
             panier.getProduits().add(produit);
         }
@@ -48,13 +45,11 @@ public class PanierService {
     public String retirerProduitDuPanier(int consommateurId, int produitId) {
         Consommateur consommateur = findConsommateurById(consommateurId);
         Panier panier = validerPanierNonVide(consommateur);
-        
-        // Trouver et retirer le PanierProduit
+
         PanierProduit panierProduit = trouverPanierProduit(panier, produitId);
         panier.getPanierProduits().remove(panierProduit);
         panierProduitRepository.delete(panierProduit);
-        
-        // Retirer de la liste produits
+
         panier.getProduits().removeIf(p -> p.getId() == produitId);
         
         panierRepository.save(panier);

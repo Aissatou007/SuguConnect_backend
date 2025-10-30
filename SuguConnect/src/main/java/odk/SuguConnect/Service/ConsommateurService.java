@@ -17,10 +17,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.util.List;
 
-/**
- * Service responsable UNIQUEMENT de la gestion des consommateurs (CRUD)
- * Respecte le principe SRP - Single Responsibility Principle
- */
+
 @Service
 @RequiredArgsConstructor
 public class ConsommateurService {

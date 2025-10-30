@@ -19,7 +19,7 @@ public class ProduitService {
     private final ProducteurRepository producteurRepository ;
     private final CategorieRepository categorieRepository;
 
-    // Liste noire : produits interdits (non agricoles)
+    // Liste noire : produits interdits
     private final List<String> produitsInterdits = Arrays.asList(
             "téléphone", "telephone", "voiture", "ordinateur", "pc",
             "tv", "télé", "chaussure", "vetement", "parfum", "montre", "casque",
@@ -108,8 +108,6 @@ public class ProduitService {
         return produit;
     }
 
-    // ========== Méthodes publiques ==========
-    
     public List<Produit> listerLesProduits(int producteurId){
         Producteur producteur = producteurRepository.findById(producteurId)
                 .orElseThrow(()->new EntityNotFoundException("Ce producteur n'existe pas"));
@@ -135,8 +133,6 @@ public class ProduitService {
         } produitRepository.delete(produit);
         return "Le produit a été supprimé";
     }
-    
-    // ========== Méthodes privées utilitaires ==========
 
     private void validerNomProduit(String nomProduit) {
         if (nomProduit == null || nomProduit.trim().isEmpty()) {
@@ -144,8 +140,7 @@ public class ProduitService {
         }
         
         String nomNormalise = nomProduit.trim().toLowerCase();
-        
-        // Vérifier si le nom du produit figure dans la liste noire
+
         for (String produitInterdit : produitsInterdits) {
             if (nomNormalise.contains(produitInterdit)) {
                 throw new IllegalArgumentException(

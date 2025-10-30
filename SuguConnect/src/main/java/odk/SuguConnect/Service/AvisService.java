@@ -26,9 +26,6 @@ public class AvisService {
     private final ConsommateurRepository consommateurRepository;
     private final ProducteurRepository producteurRepository;
 
-    /**
-     * Créer un avis après validation de réception
-     */
     @Transactional
     public Avis creerAvis(int commandeId, int consommateurId, int note, String commentaire) {
         // Vérifier que la commande existe
@@ -78,18 +75,14 @@ public class AvisService {
         return avisRepository.save(avis);
     }
 
-    /**
-     * Récupérer tous les avis validés d'un producteur
-     */
+
     public List<Avis> getAvisProducteur(int producteurId) {
         Producteur producteur = producteurRepository.findById(producteurId)
                 .orElseThrow(() -> new EntityNotFoundException("Producteur non trouvé"));
         return avisRepository.findByProducteurAndValideTrue(producteur);
     }
 
-    /**
-     * Calculer la moyenne des notes d'un producteur
-     */
+
     public double getMoyenneNotesProducteur(int producteurId) {
         List<Avis> avis = getAvisProducteur(producteurId);
         if (avis.isEmpty()) {
@@ -101,9 +94,6 @@ public class AvisService {
                 .orElse(0.0);
     }
 
-    /**
-     * Récupérer l'avis d'une commande
-     */
     public Avis getAvisCommande(int commandeId) {
         List<Avis> avis = avisRepository.findByCommandeIdCommande(commandeId);
         return avis.isEmpty() ? null : avis.get(0);
