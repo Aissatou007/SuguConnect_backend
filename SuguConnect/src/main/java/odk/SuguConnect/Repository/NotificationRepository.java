@@ -35,7 +35,7 @@ public interface NotificationRepository extends JpaRepository<Notification, Inte
     // Compter les notifications non lues
     long countByDestinataireAndLuFalse(Utilisateur destinataire);
     
-    // Récupérer les notifications récentes (7 derniers jours)
+    // Récupérer les notifications récentes
     @Query("SELECT n FROM Notification n WHERE n.destinataire = :destinataire AND n.dateEnvoi >= :dateDebut ORDER BY n.dateEnvoi DESC")
     List<Notification> findNotificationsRecentes(@Param("destinataire") Utilisateur destinataire, @Param("dateDebut") LocalDateTime dateDebut);
 }

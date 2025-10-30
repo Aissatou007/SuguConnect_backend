@@ -28,10 +28,6 @@ public class CommandeService {
     private final PanierProduitRepository panierProduitRepository;
     private final NotificationService notificationService;
 
-    /**
-     * Passer une commande avec les produits du panier
-     * Permet au consommateur de passer une commande avec les produits qu'il a ajoutés dans son panier
-     */
     @Transactional
     public Commande passerCommande(int idConsommateur, PasserCommandePanierDTO request) {
         Consommateur consommateur = findConsommateurById(idConsommateur);
@@ -149,10 +145,7 @@ public class CommandeService {
         commande.setStatutCommande(StatutCommande.EN_ATTENTE);
         return commande;
     }
-    
-    /**
-     * Traiter les produits spécifiés dans la requête de commande à partir du panier
-     */
+
     private double traiterProduitsSpecifiquesDuPanier(List<ProduitCommandeDTO> produits, Commande commande, Panier panier) {
         double total = 0.0;
         
@@ -282,12 +275,10 @@ public class CommandeService {
             int quantiteRestante = panierProduit.getQuantite() - produitDTO.quantite();
             
             if (quantiteRestante <= 0) {
-                // Retirer complètement le produit du panier
                 panier.getPanierProduits().remove(panierProduit);
                 panierProduitRepository.delete(panierProduit);
                 panier.getProduits().removeIf(p -> p.getId() == produitDTO.produitId());
             } else {
-                // Mettre à jour la quantité
                 panierProduit.setQuantite(quantiteRestante);
                 panierProduitRepository.save(panierProduit);
             }

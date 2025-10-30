@@ -59,8 +59,6 @@ public class LivreurService {
         }
         
         LivreurMapper.toEntity(dto, livreur);
-        
-        // Encoder le mot de passe uniquement s'il est fourni
         if (dto.motDePasse() != null && !dto.motDePasse().isEmpty()) {
             livreur.setMotDePasse(passwordEncoder.encode(dto.motDePasse()));
         }
