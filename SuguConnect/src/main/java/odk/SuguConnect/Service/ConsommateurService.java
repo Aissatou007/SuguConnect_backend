@@ -28,10 +28,6 @@ public class ConsommateurService {
     private final ProduitRepository produitRepository;
     private final PasswordEncoder passwordEncoder;
 
-    /**
-     * Inscrire un nouveau consommateur
-     * Responsabilité: Création de compte consommateur uniquement
-     */
     public String inscriptionConsommateur(ConsommateurRequestDTO dto, String telephone) {
         verifierCompteNonExistant(telephone);
         
@@ -42,11 +38,7 @@ public class ConsommateurService {
         consommateurRepository.save(consommateur);
         return "Soyez le bienvenue ";
     }
-    
-    /**
-     * Récupérer tous les consommateurs
-     * Responsabilité: Lecture de données consommateurs
-     */
+
     public List<ConsommateurResponseDTO> recupererLesConsommateurs() {
         return consommateurRepository.findAll().stream()
                 .map(ConsommateurMapper::toResponse)
@@ -59,10 +51,7 @@ public class ConsommateurService {
         return ConsommateurMapper.toResponse(consommateur);
     }
     
-    /**
-     * Modifier les informations d'un consommateur
-     * Responsabilité: Mise à jour des données consommateur
-     */
+
     public String modifierInformationConsommateur(ConsommateurRequestDTO dto, int id) {
         Consommateur consommateur = findConsommateurById(id);
         mettreAJourInformations(consommateur, dto);
@@ -70,38 +59,25 @@ public class ConsommateurService {
         return "Vos informations ont été modifiées avec succès";
     }
     
-    /**
-     * Supprimer un consommateur
-     * Responsabilité: Suppression de compte consommateur
-     */
+
     public String supprimerConsommateur(int id) {
         Consommateur consommateur = findConsommateurById(id);
         consommateurRepository.delete(consommateur);
         return "Le compte a été supprimé avec succès";
     }
     
-    /**
-     * Voir tous les produits disponibles
-     * Responsabilité: Consultation publique des produits
-     * Note: Méthode de lecture simple, pas de logique métier complexe
-     */
+
     public List<Produit> voirTousLesProduitsDisponibles() {
         return produitRepository.findAllByStockDisponibleGreaterThan(0);
     }
-    
-    /**
-     * Filtrer les produits disponibles par nom
-     * Responsabilité: Recherche de produits par nom
-     */
+
     public List<Produit> filtrerProduitsDisponiblesParNom(String nom) {
         List<Produit> produits = produitRepository.findByNomContainingIgnoreCase(nom);
         return produits.stream()
                 .filter(produit -> produit.getStockDisponible() > 0)
                 .toList();
     }
-    
-    // ========== Méthodes privées utilitaires ==========
-    
+
     private void verifierCompteNonExistant(String telephone) {
         if (consommateurRepository.findByTelephone(telephone) != null) {
             throw new IllegalArgumentException("Ce compte existe déjà");
@@ -134,8 +110,7 @@ public class ConsommateurService {
         consommateur.setTelephone(dto.telephone());
         consommateur.setEmail(dto.email());
         consommateur.setLocalisation(dto.localisation());
-        
-        // Encoder le mot de passe uniquement s'il est fourni
+
         if (dto.motDePasse() != null && !dto.motDePasse().isEmpty()) {
             consommateur.setMotDePasse(passwordEncoder.encode(dto.motDePasse()));
         }

@@ -150,11 +150,6 @@ public class PaiementService {
         
         return message;
     }
-    
-    /**
-     * Webhook pour Orange Money
-     * Note: À implémenter lors de l'intégration réelle avec les APIs
-     */
     @Transactional
     public void traiterWebhookPaiement(String referenceTransaction, String statut, int paiementId) {
         Paiement paiement = findPaiementById(paiementId);
@@ -167,8 +162,7 @@ public class PaiementService {
         
         paiementRepository.save(paiement);
     }
-    
-    // ========== Méthodes privées utilitaires ==========
+
     
     private Paiement findPaiementById(int id) {
         return paiementRepository.findById(id)

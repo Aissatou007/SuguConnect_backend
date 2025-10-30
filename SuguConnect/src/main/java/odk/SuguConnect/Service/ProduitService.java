@@ -107,7 +107,7 @@ public class ProduitService {
         produitRepository.save(produit);
         return produit;
     }
-    
+
     // ========== Méthodes publiques ==========
     
     public List<Produit> listerLesProduits(int producteurId){
@@ -137,12 +137,7 @@ public class ProduitService {
     }
     
     // ========== Méthodes privées utilitaires ==========
-    
-    /**
-     * Valider le nom du produit pour s'assurer qu'il ne figure pas dans la liste noire
-     * @param nomProduit Le nom du produit à valider
-     * @throws IllegalArgumentException si le nom du produit est interdit
-     */
+
     private void validerNomProduit(String nomProduit) {
         if (nomProduit == null || nomProduit.trim().isEmpty()) {
             throw new IllegalArgumentException("Le nom du produit ne peut pas être vide");

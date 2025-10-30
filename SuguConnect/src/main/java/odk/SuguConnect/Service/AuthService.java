@@ -9,7 +9,6 @@ import odk.SuguConnect.Entity.Consommateur;
 import odk.SuguConnect.Entity.Producteur;
 import odk.SuguConnect.Enums.Role;
 import odk.SuguConnect.Enums.StatutProducteur;
-import odk.SuguConnect.Interface.Utilisateur;
 import odk.SuguConnect.Repository.AdminRepository;
 import odk.SuguConnect.Repository.ConsommateurRepository;
 import odk.SuguConnect.Repository.ProducteurRepository;
@@ -17,8 +16,6 @@ import odk.SuguConnect.Repository.UtilisateurRepository;
 import odk.SuguConnect.Security.JwtService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -31,10 +28,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
-    /**
-     * Authentifier un utilisateur (Admin, Producteur ou Consommateur)
-     * Recherche dans tous les repositories pour supporter l'héritage JOINED
-     */
+
     public AuthResponse login(LoginRequest loginRequest) {
         // Chercher dans chaque repository spécifique (Admin, Producteur, Consommateur)
         Admin admin = adminRepository.findByTelephone(loginRequest.telephone());
@@ -51,14 +45,11 @@ public class AuthService {
         if (consommateur != null) {
             return authenticateConsommateur(consommateur, loginRequest.motDePasse());
         }
-        
-        // Aucun utilisateur trouvé
         throw new EntityNotFoundException("Aucun compte trouvé avec ce numéro de téléphone");
     }
-    
-    /**
-     * Authentifier un admin avec vérifications
-     */
+
+    // Authentifier un admin avec vérifications
+
     private AuthResponse authenticateAdmin(Admin admin, String motDePasse) {
         if (!passwordEncoder.matches(motDePasse, admin.getMotDePasse())) {
             throw new IllegalArgumentException("Mot de passe incorrect");
@@ -87,9 +78,7 @@ public class AuthService {
         );
     }
     
-    /**
-     * Authentifier un producteur avec vérifications de statut
-     */
+    //Authentifier un producteur avec vérifications de statut
     private AuthResponse authenticateProducteur(Producteur producteur, String motDePasse) {
         if (!passwordEncoder.matches(motDePasse, producteur.getMotDePasse())) {
             throw new IllegalArgumentException("Mot de passe incorrect");
@@ -127,9 +116,8 @@ public class AuthService {
         );
     }
     
-    /**
-     * Authentifier un consommateur avec vérifications
-     */
+    //Authentifier un consommateur avec vérifications
+
     private AuthResponse authenticateConsommateur(Consommateur consommateur, String motDePasse) {
         if (!passwordEncoder.matches(motDePasse, consommateur.getMotDePasse())) {
             throw new IllegalArgumentException("Mot de passe incorrect");
@@ -158,9 +146,7 @@ public class AuthService {
         );
     }
     
-    /**
-     * Connexion spécifique pour Admin
-     */
+    // Connexion spécifique pour Admin
     public AuthResponse loginAdmin(LoginRequest loginRequest) {
         Admin admin = adminRepository.findByTelephone(loginRequest.telephone());
         
@@ -191,9 +177,7 @@ public class AuthService {
         );
     }
     
-    /**
-     * Connexion spécifique pour Producteur
-     */
+    // Connexion spécifique pour Producteur
     public AuthResponse loginProducteur(LoginRequest loginRequest) {
         Producteur producteur = producteurRepository.findByTelephone(loginRequest.telephone());
         
@@ -233,9 +217,8 @@ public class AuthService {
         );
     }
     
-    /**
-     * Connexion spécifique pour Consommateur
-     */
+    //Connexion spécifique pour Consommateur
+
     public AuthResponse loginConsommateur(LoginRequest loginRequest) {
         Consommateur consommateur = consommateurRepository.findByTelephone(loginRequest.telephone());
         
@@ -266,30 +249,25 @@ public class AuthService {
         );
     }
     
-    /**
-     * Valider un token JWT
-     */
+    // Valider un token JWT
+
     public boolean validateToken(String token, String telephone) {
         return jwtService.isTokenValid(token, telephone);
     }
     
-    /**
-     * Extraire le téléphone du token
-     */
+    //Extraire le téléphone du token
+
     public String extractTelephone(String token) {
         return jwtService.extractUsername(token);
     }
     
-    /**
-     * Extraire le rôle du token
-     */
+    // Extraire le rôle du token
+
     public String extractRole(String token) {
         return jwtService.extractRole(token);
     }
     
-    /**
-     * Vérifier si l'utilisateur a le rôle requis
-     */
+    //Vérifier si l'utilisateur a le rôle requis
     public boolean hasRole(String token, Role requiredRole) {
         String role = jwtService.extractRole(token);
         return role != null && role.equals(requiredRole.name());

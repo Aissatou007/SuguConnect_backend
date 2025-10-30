@@ -7,8 +7,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import odk.SuguConnect.DTO.Request.ConsommateurRequestDTO;
-import odk.SuguConnect.DTO.Request.PasserCommandePanierRequestDTO;
-import odk.SuguConnect.DTO.Request.PasserCommandeRequestDTO;
+import odk.SuguConnect.DTO.Request.PasserCommandePanierDTO;
 import odk.SuguConnect.DTO.Responses.ConsommateurResponseDTO;
 import odk.SuguConnect.Entity.Commande;
 import odk.SuguConnect.Entity.Panier;
@@ -233,62 +232,22 @@ public class ConsommateurController {
 
     @PostMapping(path = "/{idConsommateur}/commande")
     @Operation(
-            summary = "Passer une commande (utilise le panier)",
-            description = "Permet à un consommateur de passer une commande avec les produits de son panier"
+            summary = "Passer une commande",
+            description = "Permet à un consommateur de passer une commande en spécifiant les produits du panier à commander"
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Commande passée avec succès"),
-            @ApiResponse(responseCode = "400", description = "Panier vide ou stock insuffisant"),
+            @ApiResponse(responseCode = "400", description = "Stock insuffisant ou données invalides"),
             @ApiResponse(responseCode = "404", description = "Consommateur non trouvé")
     })
     public ResponseEntity<odk.SuguConnect.DTO.Responses.CommandeResponseDTO> passerCommande(
             @Parameter(description = "ID du consommateur", required = true)
             @PathVariable int idConsommateur,
-            @Parameter(description = "Mode de paiement choisi", required = true)
-            @RequestParam ModePaiement modePaiement) {
-        Commande commande = commandeService.passerCommande(idConsommateur, modePaiement);
-        return ResponseEntity.ok(CommandeMapper.toResponse(commande));
-    }
-    
-    @PostMapping(path = "/{idConsommateur}/commande/direct")
-    @Operation(
-            summary = "Passer une commande directe",
-            description = "Permet à un consommateur de passer une commande en choisissant directement les produits (sans utiliser le panier)"
-    )
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Commande passée avec succès"),
-            @ApiResponse(responseCode = "400", description = "Stock insuffisant ou données invalides"),
-            @ApiResponse(responseCode = "404", description = "Consommateur ou produit non trouvé")
-    })
-    public ResponseEntity<odk.SuguConnect.DTO.Responses.CommandeResponseDTO> passerCommandeDirecte(
-            @Parameter(description = "ID du consommateur", required = true)
-            @PathVariable int idConsommateur,
-            @io.swagger.v3.oas.annotations.parameters.RequestBody(
-                    description = "Produits à commander et mode de paiement"
-            )
-            @RequestBody PasserCommandeRequestDTO request) {
-        Commande commande = commandeService.passerCommandeAvecProduits(idConsommateur, request);
-        return ResponseEntity.ok(CommandeMapper.toResponse(commande));
-    }
-    
-    @PostMapping(path = "/{idConsommateur}/commande/panier")
-    @Operation(
-            summary = "Passer une commande à partir de produits spécifiques du panier",
-            description = "Permet à un consommateur de passer une commande en choisissant des produits spécifiques de son panier avec leurs quantités"
-    )
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Commande passée avec succès"),
-            @ApiResponse(responseCode = "400", description = "Stock insuffisant, quantité invalide ou produit non trouvé dans le panier"),
-            @ApiResponse(responseCode = "404", description = "Consommateur non trouvé")
-    })
-    public ResponseEntity<odk.SuguConnect.DTO.Responses.CommandeResponseDTO> passerCommandeDepuisPanier(
-            @Parameter(description = "ID du consommateur", required = true)
-            @PathVariable int idConsommateur,
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "Produits du panier à commander et mode de paiement"
             )
-            @RequestBody PasserCommandePanierRequestDTO request) {
-        Commande commande = commandeService.passerCommandeAvecProduitsDuPanier(idConsommateur, request);
+            @RequestBody odk.SuguConnect.DTO.Request.PasserCommandePanierDTO request) {
+        Commande commande = commandeService.passerCommande(idConsommateur, request);
         return ResponseEntity.ok(CommandeMapper.toResponse(commande));
     }
     
