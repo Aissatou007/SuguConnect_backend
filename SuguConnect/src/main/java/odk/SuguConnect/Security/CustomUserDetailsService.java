@@ -16,11 +16,6 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
-
-/**
- * Service personnalisé pour charger les détails de l'utilisateur
- * Utilisé par Spring Security pour l'authentification
- */
 @Service
 @RequiredArgsConstructor
 public class CustomUserDetailsService implements UserDetailsService {
@@ -29,19 +24,11 @@ public class CustomUserDetailsService implements UserDetailsService {
     private final ProducteurRepository producteurRepository;
     private final ConsommateurRepository consommateurRepository;
 
-    /**
-     * Charger un utilisateur par son téléphone (username)
-     * Recherche dans tous les repositories pour supporter l'héritage JOINED
-     * 
-     * @param telephone Le numéro de téléphone de l'utilisateur
-     * @return UserDetails contenant les informations de l'utilisateur
-     * @throws UsernameNotFoundException Si l'utilisateur n'est pas trouvé
-     */
     @Override
     public UserDetails loadUserByUsername(String telephone) throws UsernameNotFoundException {
         // Rechercher dans chaque repository spécifique
         Utilisateur utilisateur = null;
-        
+
         // Chercher dans Admin
         Admin admin = adminRepository.findByTelephone(telephone);
         if (admin != null) {
@@ -70,19 +57,15 @@ public class CustomUserDetailsService implements UserDetailsService {
                 "Utilisateur non trouvé avec le téléphone: " + telephone
             );
         }
-
-        // Créer l'autorité (rôle) avec le préfixe ROLE_
         SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + utilisateur.getRole().name());
-
-        // Retourner un objet UserDetails de Spring Security
         return User.builder()
                 .username(utilisateur.getTelephone())
                 .password(utilisateur.getMotDePasse())
                 .authorities(Collections.singletonList(authority))
                 .accountExpired(false)
-                .accountLocked(!utilisateur.isActif()) // Compte verrouillé si inactif
+                .accountLocked(!utilisateur.isActif())
                 .credentialsExpired(false)
-                .disabled(!utilisateur.isActif()) // Compte désactivé si inactif
+                .disabled(!utilisateur.isActif())
                 .build();
     }
 }

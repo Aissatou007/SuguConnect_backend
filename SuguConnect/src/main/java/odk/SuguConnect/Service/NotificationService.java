@@ -115,7 +115,6 @@ public class NotificationService {
     }
 
     //Notification de compte validé
-
     @Transactional
     public void notifierCompteValide(int producteurId) {
         String message = "Félicitations ! Votre compte producteur a été validé. Vous pouvez maintenant ajouter vos produits.";
@@ -150,7 +149,7 @@ public class NotificationService {
         creerNotification(producteurId, TypeMessage.PRODUIT_EPUISE, message, action, 72);
     }
 
-    // Notification admin - Nouvelle inscription producteur
+    // Notification admin Nouvelle inscription producteur
 
     @Transactional
     public void notifierAdminNouvelleInscription(List<Integer> adminIds, int producteurId, String nomProducteur) {
@@ -162,7 +161,7 @@ public class NotificationService {
         }
     }
 
-    // Notification admin - Nouvelle commande
+    // Notification admin  Nouvelle commande
 
     @Transactional
     public void notifierAdminNouvelleCommande(List<Integer> adminIds, int commandeId, double montant) {
