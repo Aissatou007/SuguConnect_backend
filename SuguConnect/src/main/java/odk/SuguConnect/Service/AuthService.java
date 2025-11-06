@@ -49,7 +49,6 @@ public class AuthService {
     }
 
     // Authentifier un admin avec vérifications
-
     private AuthResponse authenticateAdmin(Admin admin, String motDePasse) {
         if (!passwordEncoder.matches(motDePasse, admin.getMotDePasse())) {
             throw new IllegalArgumentException("Mot de passe incorrect");
@@ -250,19 +249,16 @@ public class AuthService {
     }
     
     // Valider un token JWT
-
     public boolean validateToken(String token, String telephone) {
         return jwtService.isTokenValid(token, telephone);
     }
     
     //Extraire le téléphone du token
-
     public String extractTelephone(String token) {
         return jwtService.extractUsername(token);
     }
     
     // Extraire le rôle du token
-
     public String extractRole(String token) {
         return jwtService.extractRole(token);
     }

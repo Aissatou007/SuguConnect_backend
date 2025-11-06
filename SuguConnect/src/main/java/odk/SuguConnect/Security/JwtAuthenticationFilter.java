@@ -43,11 +43,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        // Extraire le token JWT (après "Bearer ")
+        // Extraire le token JWT
         jwt = authHeader.substring(7);
         
         try {
-            // Extraire le téléphone (username) du token
+            // Extraire le téléphone du token
             telephone = jwtService.extractUsername(jwt);
             logger.info("JWT Filter - Telephone extrait: " + telephone);
 
@@ -62,14 +62,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     String role = jwtService.extractRole(jwt);
                     logger.info("JWT Filter - Rôle extrait du token: " + role);
                     
-                    // Créer l'autorité avec le préfixe ROLE_
+                    // Créer l'autorité avec le  ROLE_
                     SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + role);
                     logger.info("JWT Filter - Autorité créée: " + authority.getAuthority());
                     
                     // Créer un UserDetails simplifié à partir du token
                     UserDetails userDetails = User.builder()
                             .username(telephone)
-                            .password("") // Pas besoin du mot de passe pour JWT
+                            .password("")
                             .authorities(Collections.singletonList(authority))
                             .build();
                     
@@ -97,11 +97,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 logger.info("JWT Filter - Authentification déjà présente dans SecurityContext");
             }
         } catch (Exception e) {
-            // En cas d'erreur (token invalide, expiré, etc.), continuer sans authentification
+            // En cas d'erreur
             logger.error("Erreur lors de la validation du token JWT: " + e.getMessage(), e);
         }
-
-        // Continuer la chaîne de filtres
         filterChain.doFilter(request, response);
     }
 }
