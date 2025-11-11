@@ -174,7 +174,7 @@ public class ProducteurController {
             if (!photo.isEmpty()) {
                 String fileName = fileStorageService.storeFile(photo);
                 String fileDownloadUri = ServletUriComponentsBuilder.fromCurrentContextPath()
-                        .path("/suguconnect/files/download/")
+                        .path("/uploads/")
                         .path(fileName)
                         .toUriString();
                 photoUrls.add(fileDownloadUri);
@@ -291,7 +291,7 @@ public class ProducteurController {
                 if (!photo.isEmpty()) {
                     String fileName = fileStorageService.storeFile(photo);
                     String fileDownloadUri = ServletUriComponentsBuilder.fromCurrentContextPath()
-                            .path("/suguconnect/files/download/")
+                            .path("/uploads/")
                             .path(fileName)
                             .toUriString();
                     photoUrls.add(fileDownloadUri);

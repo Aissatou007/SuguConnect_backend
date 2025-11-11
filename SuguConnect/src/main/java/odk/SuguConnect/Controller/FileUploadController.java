@@ -47,7 +47,7 @@ public class FileUploadController {
         String fileName = fileStorageService.storeFile(file);
 
         String fileDownloadUri = ServletUriComponentsBuilder.fromCurrentContextPath()
-                .path("/suguconnect/files/download/")
+                .path("/uploads/")
                 .path(fileName)
                 .toUriString();
 
@@ -80,7 +80,7 @@ public class FileUploadController {
                 String fileName = fileStorageService.storeFile(file);
 
                 String fileDownloadUri = ServletUriComponentsBuilder.fromCurrentContextPath()
-                        .path("/suguconnect/files/download/")
+                        .path("/uploads/")
                         .path(fileName)
                         .toUriString();
 
@@ -174,7 +174,7 @@ public class FileUploadController {
                 String fileName = fileStorageService.storeFile(photo);
                 
                 String fileDownloadUri = ServletUriComponentsBuilder.fromCurrentContextPath()
-                        .path("/suguconnect/files/download/")
+                        .path("/uploads/")
                         .path(fileName)
                         .toUriString();
                 

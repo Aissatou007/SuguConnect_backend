@@ -55,7 +55,8 @@ public class SecurityConfig {
                         // Consultation publique - Liste des producteurs
                         .requestMatchers(
                                 "/producteur/producteurs",         // Liste des producteurs
-                                "/files/download/**"               // Téléchargement de fichiers (images, etc.)
+                                "/files/download/**",              // Téléchargement de fichiers (images, etc.)
+                                "/uploads/**"                      // Accès direct aux fichiers uploadés
                         ).permitAll()
                         
                         // Consultation publique - Produits disponibles (GET uniquement)
