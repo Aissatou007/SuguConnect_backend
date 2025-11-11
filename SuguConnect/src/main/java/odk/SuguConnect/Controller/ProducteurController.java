@@ -168,16 +168,12 @@ public class ProducteurController {
             return ResponseEntity.badRequest().body("Format de nombre invalide");
         }
 
-        // Sauvegarder les photos et obtenir les URLs
+        // Sauvegarder les photos et ne stocker que les noms de fichiers
         List<String> photoUrls = new ArrayList<>();
         for (MultipartFile photo : photos) {
             if (!photo.isEmpty()) {
                 String fileName = fileStorageService.storeFile(photo);
-                String fileDownloadUri = ServletUriComponentsBuilder.fromCurrentContextPath()
-                        .path("/uploads/")
-                        .path(fileName)
-                        .toUriString();
-                photoUrls.add(fileDownloadUri);
+                photoUrls.add(fileName);
             }
         }
 
@@ -290,11 +286,7 @@ public class ProducteurController {
             for (MultipartFile photo : photos) {
                 if (!photo.isEmpty()) {
                     String fileName = fileStorageService.storeFile(photo);
-                    String fileDownloadUri = ServletUriComponentsBuilder.fromCurrentContextPath()
-                            .path("/uploads/")
-                            .path(fileName)
-                            .toUriString();
-                    photoUrls.add(fileDownloadUri);
+                    photoUrls.add(fileName);
                 }
             }
             produitModifie.setPhotos(photoUrls);
