@@ -10,10 +10,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import odk.SuguConnect.DTO.Request.AdminRequestDTO;
 import odk.SuguConnect.DTO.Request.ProducteurRequestDTO;
 import odk.SuguConnect.DTO.Responses.AdminResponseDTO;
+import odk.SuguConnect.DTO.Responses.HistoriqueVenteDTO;
 import odk.SuguConnect.DTO.Responses.LivreurResponseDTO;
 import odk.SuguConnect.Entity.*;
 import odk.SuguConnect.Enums.StatutProducteur;
 import odk.SuguConnect.Service.AdminService;
+import odk.SuguConnect.Service.CommandeService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,9 +26,10 @@ import java.util.List;
 @Tag(name = "Administrateur", description = "API de gestion des administrateurs")
 public class AdminController {
     private final AdminService adminService;
-
-    public AdminController(AdminService adminService) {
+    private final CommandeService commandeService;
+    public AdminController(AdminService adminService,CommandeService commandeService) {
         this.adminService = adminService;
+        this.commandeService=commandeService;
     }
 
     @PostMapping(path = "/inscription")
@@ -130,6 +133,7 @@ public class AdminController {
         String message = adminService.toggleAdminStatus(id, actif);
         return ResponseEntity.ok(message);
     }
+
     @PostMapping(path = "/producteurs/ajouter")
     @Operation(
             summary = "Ajouter un producteur",
@@ -218,6 +222,28 @@ public class AdminController {
     public ResponseEntity<List<LivreurResponseDTO>> voirLivreursPourCommande() {
         List<LivreurResponseDTO> livreurs = adminService.recupererLivreursDisponibles();
         return ResponseEntity.ok(livreurs);
+    }
+    @GetMapping("/produits/{id}")
+    public ResponseEntity<Produit> voirProduitParId(@PathVariable int id) {
+        Produit produit = adminService.recupererProduitParId(id);
+        return ResponseEntity.ok(produit);
+    }
+    @GetMapping("/commandes/historique")
+    @Operation(summary = "Historique des ventes", description = "Retourne toutes les commandes avec détails produits et client")
+    @ApiResponse(responseCode = "200", description = "Historique récupéré")
+    public ResponseEntity<List<Commande>> voirHistoriqueVentes() {
+        List<Commande> commandes = adminService.recupererHistoriqueVentes();
+        return ResponseEntity.ok(commandes);
+    }
+    @GetMapping("/produits/{id}/commandes")
+    public ResponseEntity<List<CommandeProduit>> getCommandesPourProduit(@PathVariable int id) {
+        List<CommandeProduit> commandes = adminService.getCommandesPourProduit(id);
+        return ResponseEntity.ok(commandes);
+    }
+    @GetMapping("/produits/{id}/historique-ventes")
+    public ResponseEntity<List<HistoriqueVenteDTO>> getHistoriqueVentes(@PathVariable int id) {
+        List<HistoriqueVenteDTO> historique = commandeService.getHistoriqueVentesProduit(id);
+        return ResponseEntity.ok(historique);
     }
 
 

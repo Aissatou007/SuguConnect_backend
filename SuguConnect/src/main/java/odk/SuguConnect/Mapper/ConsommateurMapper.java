@@ -20,7 +20,10 @@ public class ConsommateurMapper {
     public static ConsommateurResponseDTO toResponse(Consommateur consommateur){
         if(consommateur == null) return null;
 
-        ConsommateurResponseDTO consommateurResponseDTO = new ConsommateurResponseDTO(
+        // On récupère le nombre de commandes si c'est disponible
+        int nombreCommandes = consommateur.getCommandes() != null ? consommateur.getCommandes().size() : 0;
+
+        return new ConsommateurResponseDTO(
                 consommateur.getId(),
                 consommateur.getNom(),
                 consommateur.getPrenom(),
@@ -31,8 +34,8 @@ public class ConsommateurMapper {
                 consommateur.getLongitude(),
                 consommateur.getRole(),
                 consommateur.getPanier() != null ? consommateur.getPanier().getId() : null,
-                consommateur.getDateInscription()
+                consommateur.getDateInscription(),
+                nombreCommandes
         );
-        return consommateurResponseDTO;
     }
 }

@@ -7,6 +7,7 @@ import odk.SuguConnect.DTO.Responses.AdminResponseDTO;
 import odk.SuguConnect.DTO.Responses.LivreurResponseDTO;
 import odk.SuguConnect.Entity.*;
 import odk.SuguConnect.Enums.Role;
+import odk.SuguConnect.Enums.StatutCommande;
 import odk.SuguConnect.Enums.StatutProducteur;
 import odk.SuguConnect.Mapper.AdminMapper;
 import odk.SuguConnect.Mapper.LivreurMapper;
@@ -17,6 +18,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class AdminService {
@@ -191,6 +193,69 @@ public class AdminService {
         return livreurRepository.findByDisponibleTrue().stream()
                 .map(LivreurMapper::toResponse)
                 .toList();
+    }
+    public Commande recupererCommandeParId(int id) {
+        return commandeRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Commande non trouvée avec l'ID: " + id));
+    }
+
+    public Commande modifierStatutCommande(int id, String statut) {
+        Commande commande = commandeRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Commande non trouvée avec l'ID: " + id));
+
+        try {
+            StatutCommande nouveauStatut = StatutCommande.valueOf(statut);
+            commande.setStatutCommande(nouveauStatut);
+            return commandeRepository.save(commande);
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Statut invalide: " + statut);
+        }
+    }
+
+    public Commande assignerLivreur(int commandeId, int livreurId) {
+        Commande commande = commandeRepository.findById(commandeId)
+                .orElseThrow(() -> new RuntimeException("Commande non trouvée"));
+
+        Livreur livreur = livreurRepository.findById(livreurId)
+                .orElseThrow(() -> new RuntimeException("Livreur non trouvé"));
+
+        commande.setLivreurPrefere(livreur);
+        return commandeRepository.save(commande);
+    }
+    public Produit recupererProduitParId(int id) {
+        verifierRoleAdmin();
+        return produitRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Produit introuvable"));
+    }
+    public List<Commande> recupererHistoriqueVentes() {
+        verifierRoleAdmin(); // vérifie que l'utilisateur est admin
+        // Récupère toutes les commandes avec leurs produits et consommateur
+        List<Commande> commandes = commandeRepository.findAll();
+        // Tu peux calculer le montant total si nécessaire
+        commandes.forEach(commande -> {
+            double total = commande.getCommandeProduits().stream()
+                    .mapToDouble(cp -> cp.getPrixUnitaire() * cp.getQuantite())
+                    .sum();
+            commande.setMontantTotal(total);
+        });
+        return commandes;
+    }
+    public List<Commande> recupererHistoriqueVentesAvecDetails() {
+        verifierRoleAdmin();
+        return commandeRepository.findAll();
+        // Assure-toi que l'entité Commande contient les relations @ManyToOne vers Produit et Consommateur
+    }
+    public List<CommandeProduit> getCommandesPourProduit(int produitId) {
+        // récupère toutes les commandes
+        List<Commande> toutesCommandes = commandeRepository.findAll();
+
+        // filtre toutes les commandes pour ne garder que celles qui contiennent le produit
+        List<CommandeProduit> commandesProduit = toutesCommandes.stream()
+                .flatMap(c -> c.getCommandeProduits().stream())
+                .filter(cp -> cp.getProduit().getId() == produitId)
+                .collect(Collectors.toList());
+
+        return commandesProduit;
     }
 
 }
