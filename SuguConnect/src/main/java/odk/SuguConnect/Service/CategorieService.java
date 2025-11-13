@@ -8,17 +8,21 @@ import odk.SuguConnect.Repository.ProduitRepository;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
 public class CategorieService {
     private final CategorieRepository categorieRepository;
     private final ProduitRepository produitRepository;
+    private final FileStorageService fileStorageService;
 
-    public CategorieService(CategorieRepository categorieRepository, ProduitService produitService, ProduitRepository produitRepository) {
+    public CategorieService(CategorieRepository categorieRepository, ProduitService produitService, ProduitRepository produitRepository, FileStorageService fileStorageService) {
         this.categorieRepository = categorieRepository;
         this.produitRepository = produitRepository;
+        this.fileStorageService = fileStorageService;
     }
     private void verifierRoleAdmin() {
         var auth = SecurityContextHolder.getContext().getAuthentication();
@@ -38,6 +42,13 @@ public class CategorieService {
     public Categorie creerCategorie(String libelle, MultipartFile photo) throws IOException {
         Categorie categorie = new Categorie();
         categorie.setLibelle(libelle);
+        categorie.setDateAjout(LocalDate.now());
+        
+        // Handle photo upload if provided
+        if (photo != null && !photo.isEmpty()) {
+            String fileName = fileStorageService.storeFile(photo);
+            categorie.setPhotoUrl(fileName);
+        }
 
         return categorieRepository.save(categorie);
     }

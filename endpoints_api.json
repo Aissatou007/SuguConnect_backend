@@ -1,0 +1,710 @@
+{
+  "baseUrl": "http://localhost:8080/suguconnect",
+  "port": 8080,
+  "contextPath": "/suguconnect",
+  "endpoints": {
+    "auth": {
+      "basePath": "/auth",
+      "public": true,
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/auth/login",
+          "description": "Connexion universelle (Admin, Producteur, Consommateur)",
+          "authRequired": false,
+          "body": "LoginRequest { telephone, password }",
+          "response": "AuthResponse { token, role, telephone, ... }"
+        },
+        {
+          "method": "POST",
+          "path": "/auth/login/admin",
+          "description": "Connexion spécifique administrateur",
+          "authRequired": false,
+          "body": "LoginRequest",
+          "response": "AuthResponse"
+        },
+        {
+          "method": "POST",
+          "path": "/auth/login/producteur",
+          "description": "Connexion spécifique producteur",
+          "authRequired": false,
+          "body": "LoginRequest",
+          "response": "AuthResponse"
+        },
+        {
+          "method": "POST",
+          "path": "/auth/login/consommateur",
+          "description": "Connexion spécifique consommateur",
+          "authRequired": false,
+          "body": "LoginRequest",
+          "response": "AuthResponse"
+        },
+        {
+          "method": "POST",
+          "path": "/auth/validate-token",
+          "description": "Valider un token JWT",
+          "authRequired": false,
+          "queryParams": ["token", "telephone"],
+          "response": "{ valid: boolean, message: string, role: string }"
+        },
+        {
+          "method": "GET",
+          "path": "/auth/me",
+          "description": "Obtenir les infos de l'utilisateur connecté",
+          "authRequired": false,
+          "headers": ["Authorization: Bearer <token>"],
+          "response": "{ telephone: string, role: string, authenticated: boolean }"
+        }
+      ]
+    },
+    "admin": {
+      "basePath": "/admin",
+      "public": false,
+      "requiredRole": "ADMIN",
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/admin/inscription",
+          "description": "Créer un nouvel administrateur",
+          "authRequired": true,
+          "body": "AdminRequestDTO"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/admins",
+          "description": "Lister tous les administrateurs",
+          "authRequired": true
+        },
+        {
+          "method": "GET",
+          "path": "/admin/{id}",
+          "description": "Récupérer un administrateur par ID",
+          "authRequired": true,
+          "pathParams": ["id"]
+        },
+        {
+          "method": "PUT",
+          "path": "/admin/{id}",
+          "description": "Modifier un administrateur",
+          "authRequired": true,
+          "pathParams": ["id"],
+          "body": "AdminRequestDTO"
+        },
+        {
+          "method": "DELETE",
+          "path": "/admin/{id}",
+          "description": "Supprimer un administrateur",
+          "authRequired": true,
+          "pathParams": ["id"]
+        },
+        {
+          "method": "PUT",
+          "path": "/admin/{id}/toggle-status",
+          "description": "Activer/Désactiver un administrateur",
+          "authRequired": true,
+          "pathParams": ["id"],
+          "queryParams": ["actif"]
+        },
+        {
+          "method": "POST",
+          "path": "/admin/producteurs/ajouter",
+          "description": "Ajouter un producteur",
+          "authRequired": true,
+          "body": "ProducteurRequestDTO"
+        },
+        {
+          "method": "PUT",
+          "path": "/admin/producteurs/{id}/statut",
+          "description": "Changer le statut d'un producteur",
+          "authRequired": true,
+          "pathParams": ["id"],
+          "queryParams": ["statut", "raisonRejet?"]
+        },
+        {
+          "method": "GET",
+          "path": "/admin/producteurs",
+          "description": "Voir tous les producteurs",
+          "authRequired": true
+        },
+        {
+          "method": "GET",
+          "path": "/admin/consommateurs",
+          "description": "Voir tous les consommateurs",
+          "authRequired": true
+        },
+        {
+          "method": "GET",
+          "path": "/admin/produits",
+          "description": "Voir tous les produits",
+          "authRequired": true
+        },
+        {
+          "method": "GET",
+          "path": "/admin/commandes",
+          "description": "Voir toutes les commandes",
+          "authRequired": true
+        },
+        {
+          "method": "GET",
+          "path": "/admin/paiements",
+          "description": "Voir tous les paiements",
+          "authRequired": true
+        },
+        {
+          "method": "GET",
+          "path": "/admin/commandes/livreurs",
+          "description": "Récupérer les livreurs disponibles",
+          "authRequired": true
+        }
+      ]
+    },
+    "producteur": {
+      "basePath": "/producteur",
+      "public": false,
+      "requiredRole": "PRODUCTEUR ou ADMIN",
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/producteur/inscription",
+          "description": "Inscription d'un producteur (RESTREINT à ADMIN)",
+          "authRequired": true,
+          "requiredRole": "ADMIN",
+          "body": "ProducteurRequestDTO"
+        },
+        {
+          "method": "GET",
+          "path": "/producteur/producteurs",
+          "description": "Lister tous les producteurs",
+          "authRequired": false
+        },
+        {
+          "method": "GET",
+          "path": "/producteur/{id}",
+          "description": "Récupérer un producteur par ID",
+          "authRequired": false,
+          "pathParams": ["id"]
+        },
+        {
+          "method": "PUT",
+          "path": "/producteur/{id}",
+          "description": "Modifier un producteur",
+          "authRequired": true,
+          "pathParams": ["id"],
+          "body": "ProducteurRequestDTO"
+        },
+        {
+          "method": "DELETE",
+          "path": "/producteur/{id}",
+          "description": "Supprimer un producteur",
+          "authRequired": true,
+          "pathParams": ["id"]
+        },
+        {
+          "method": "POST",
+          "path": "/producteur/{producteurId}/produit",
+          "description": "Ajouter un produit avec photos",
+          "authRequired": true,
+          "pathParams": ["producteurId"],
+          "contentType": "multipart/form-data",
+          "formData": {
+            "nom": "string",
+            "description": "string?",
+            "prixUnitaire": "string (float)",
+            "unite": "string (enum)",
+            "quantite": "string (int)",
+            "categorieId": "string (int)",
+            "photos": "List<MultipartFile> (1-4 photos)"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/producteur/{producteurId}/produit",
+          "description": "Lister les produits d'un producteur",
+          "authRequired": true,
+          "pathParams": ["producteurId"]
+        },
+        {
+          "method": "GET",
+          "path": "/producteur/{producteurId}/produit/recherche",
+          "description": "Rechercher des produits par nom",
+          "authRequired": true,
+          "pathParams": ["producteurId"],
+          "queryParams": ["nom"]
+        },
+        {
+          "method": "PUT",
+          "path": "/producteur/{producteurId}/produit/{produitId}",
+          "description": "Modifier un produit avec photos",
+          "authRequired": true,
+          "pathParams": ["producteurId", "produitId"],
+          "contentType": "multipart/form-data",
+          "formData": {
+            "nom": "string?",
+            "description": "string?",
+            "prixUnitaire": "string?",
+            "unite": "string?",
+            "quantite": "string?",
+            "photos": "List<MultipartFile>? (max 4)"
+          }
+        },
+        {
+          "method": "DELETE",
+          "path": "/producteur/{producteurId}/produit/{produitId}",
+          "description": "Supprimer un produit",
+          "authRequired": true,
+          "pathParams": ["producteurId", "produitId"]
+        },
+        {
+          "method": "PUT",
+          "path": "/producteur/commande/{commandeId}/statut",
+          "description": "Changer le statut d'une commande",
+          "authRequired": true,
+          "pathParams": ["commandeId"],
+          "queryParams": ["producteurId", "nouveauStatut", "motifRejet?"]
+        }
+      ]
+    },
+    "consommateur": {
+      "basePath": "/consommateur",
+      "public": false,
+      "requiredRole": "CONSOMMATEUR ou ADMIN",
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/consommateur/inscription",
+          "description": "Inscription d'un consommateur",
+          "authRequired": false,
+          "body": "ConsommateurRequestDTO"
+        },
+        {
+          "method": "GET",
+          "path": "/consommateur/consommateurs",
+          "description": "Récupérer tous les consommateurs",
+          "authRequired": true
+        },
+        {
+          "method": "GET",
+          "path": "/consommateur/{id}",
+          "description": "Récupérer un consommateur par ID",
+          "authRequired": true,
+          "pathParams": ["id"]
+        },
+        {
+          "method": "PUT",
+          "path": "/consommateur/{id}",
+          "description": "Modifier un consommateur",
+          "authRequired": true,
+          "pathParams": ["id"],
+          "body": "ConsommateurRequestDTO"
+        },
+        {
+          "method": "DELETE",
+          "path": "/consommateur/{id}",
+          "description": "Supprimer un consommateur",
+          "authRequired": true,
+          "pathParams": ["id"]
+        },
+        {
+          "method": "GET",
+          "path": "/consommateur/produits",
+          "description": "Voir les produits disponibles",
+          "authRequired": false
+        },
+        {
+          "method": "GET",
+          "path": "/consommateur/produits/recherche",
+          "description": "Rechercher des produits par nom",
+          "authRequired": false,
+          "queryParams": ["nom"]
+        },
+        {
+          "method": "POST",
+          "path": "/consommateur/{idConsommateur}/panier/ajouter/{idProduit}",
+          "description": "Ajouter un produit au panier",
+          "authRequired": true,
+          "pathParams": ["idConsommateur", "idProduit"],
+          "queryParams": ["quantite"]
+        },
+        {
+          "method": "DELETE",
+          "path": "/consommateur/{idConsommateur}/panier/retirer/{idProduit}",
+          "description": "Retirer un produit du panier",
+          "authRequired": true,
+          "pathParams": ["idConsommateur", "idProduit"]
+        },
+        {
+          "method": "GET",
+          "path": "/consommateur/{idConsommateur}/panier",
+          "description": "Voir le panier",
+          "authRequired": true,
+          "pathParams": ["idConsommateur"]
+        },
+        {
+          "method": "GET",
+          "path": "/consommateur/{idConsommateur}/commandes",
+          "description": "Voir les commandes du consommateur",
+          "authRequired": true,
+          "pathParams": ["idConsommateur"]
+        },
+        {
+          "method": "POST",
+          "path": "/consommateur/{idConsommateur}/commande",
+          "description": "Passer une commande",
+          "authRequired": true,
+          "pathParams": ["idConsommateur"],
+          "body": "PasserCommandePanierDTO"
+        },
+        {
+          "method": "GET",
+          "path": "/consommateur/commande/{commandeId}",
+          "description": "Voir une commande spécifique",
+          "authRequired": true,
+          "pathParams": ["commandeId"]
+        },
+        {
+          "method": "POST",
+          "path": "/consommateur/commande/{commandeId}/valider-reception",
+          "description": "Valider la réception d'une commande",
+          "authRequired": true,
+          "pathParams": ["commandeId"],
+          "queryParams": ["consommateurId"]
+        }
+      ]
+    },
+    "paiement": {
+      "basePath": "/paiement",
+      "public": false,
+      "requiredRole": "Authentifié",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/paiement",
+          "description": "Récupérer tous les paiements",
+          "authRequired": true
+        },
+        {
+          "method": "GET",
+          "path": "/paiement/{id}",
+          "description": "Récupérer un paiement par ID",
+          "authRequired": true,
+          "pathParams": ["id"]
+        },
+        {
+          "method": "GET",
+          "path": "/paiement/commande/{commandeId}",
+          "description": "Récupérer le paiement d'une commande",
+          "authRequired": true,
+          "pathParams": ["commandeId"]
+        },
+        {
+          "method": "PUT",
+          "path": "/paiement/{id}/valider",
+          "description": "Valider un paiement",
+          "authRequired": true,
+          "pathParams": ["id"],
+          "queryParams": ["referenceTransaction?"]
+        },
+        {
+          "method": "PUT",
+          "path": "/paiement/{id}/echouer",
+          "description": "Marquer un paiement comme échoué",
+          "authRequired": true,
+          "pathParams": ["id"],
+          "queryParams": ["motifEchec"]
+        },
+        {
+          "method": "PUT",
+          "path": "/paiement/{id}/rembourser",
+          "description": "Rembourser un paiement",
+          "authRequired": true,
+          "pathParams": ["id"],
+          "queryParams": ["motifRemboursement"]
+        },
+        {
+          "method": "POST",
+          "path": "/paiement/{id}/initier-mobile",
+          "description": "Initier un paiement mobile (Orange Money/Wave)",
+          "authRequired": true,
+          "pathParams": ["id"],
+          "queryParams": ["numeroTelephone"]
+        },
+        {
+          "method": "POST",
+          "path": "/paiement/webhook",
+          "description": "Webhook pour Orange Money / Wave",
+          "authRequired": true,
+          "body": "Map<String, String>"
+        }
+      ]
+    },
+    "livreur": {
+      "basePath": "/admin/livreurs",
+      "public": false,
+      "requiredRole": "ADMIN",
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/admin/livreurs",
+          "description": "Créer un livreur",
+          "authRequired": true,
+          "body": "LivreurRequestDTO"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/livreurs",
+          "description": "Récupérer tous les livreurs",
+          "authRequired": true
+        },
+        {
+          "method": "GET",
+          "path": "/admin/livreurs/{id}",
+          "description": "Récupérer un livreur par ID",
+          "authRequired": true,
+          "pathParams": ["id"]
+        },
+        {
+          "method": "PUT",
+          "path": "/admin/livreurs/{id}",
+          "description": "Modifier un livreur",
+          "authRequired": true,
+          "pathParams": ["id"],
+          "body": "LivreurRequestDTO"
+        },
+        {
+          "method": "DELETE",
+          "path": "/admin/livreurs/{id}",
+          "description": "Supprimer un livreur",
+          "authRequired": true,
+          "pathParams": ["id"]
+        },
+        {
+          "method": "GET",
+          "path": "/admin/livreurs/disponibles",
+          "description": "Récupérer les livreurs disponibles",
+          "authRequired": true
+        },
+        {
+          "method": "PUT",
+          "path": "/admin/livreurs/{id}/disponibilite",
+          "description": "Mettre à jour la disponibilité",
+          "authRequired": true,
+          "pathParams": ["id"],
+          "queryParams": ["disponible"]
+        }
+      ]
+    },
+    "categorie": {
+      "basePath": "/categorie",
+      "public": false,
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/categorie",
+          "description": "Créer une catégorie",
+          "authRequired": true,
+          "requiredRole": "ADMIN",
+          "contentType": "multipart/form-data",
+          "formData": {
+            "libelle": "string",
+            "photo": "MultipartFile"
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/categorie/{id}",
+          "description": "Modifier une catégorie",
+          "authRequired": true,
+          "requiredRole": "ADMIN",
+          "pathParams": ["id"],
+          "body": "Categorie"
+        },
+        {
+          "method": "DELETE",
+          "path": "/categorie/{id}",
+          "description": "Supprimer une catégorie",
+          "authRequired": true,
+          "requiredRole": "ADMIN",
+          "pathParams": ["id"]
+        },
+        {
+          "method": "GET",
+          "path": "/categorie",
+          "description": "Récupérer toutes les catégories",
+          "authRequired": false
+        },
+        {
+          "method": "GET",
+          "path": "/categorie/{id}",
+          "description": "Récupérer une catégorie par ID",
+          "authRequired": false,
+          "pathParams": ["id"]
+        },
+        {
+          "method": "GET",
+          "path": "/categorie/{id}/produits",
+          "description": "Récupérer les produits d'une catégorie",
+          "authRequired": false,
+          "pathParams": ["id"]
+        }
+      ]
+    },
+    "files": {
+      "basePath": "/files",
+      "public": false,
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/files/upload",
+          "description": "Upload un fichier unique",
+          "authRequired": true,
+          "contentType": "multipart/form-data",
+          "formData": {
+            "file": "MultipartFile"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/files/upload-multiple",
+          "description": "Upload plusieurs fichiers",
+          "authRequired": true,
+          "contentType": "multipart/form-data",
+          "formData": {
+            "files": "MultipartFile[]"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/files/download/{fileName}",
+          "description": "Télécharger un fichier",
+          "authRequired": false,
+          "pathParams": ["fileName"]
+        },
+        {
+          "method": "DELETE",
+          "path": "/files/delete/{fileName}",
+          "description": "Supprimer un fichier",
+          "authRequired": true,
+          "pathParams": ["fileName"]
+        },
+        {
+          "method": "POST",
+          "path": "/files/product/{productId}/upload-photos",
+          "description": "Upload les photos d'un produit",
+          "authRequired": true,
+          "pathParams": ["productId"],
+          "contentType": "multipart/form-data",
+          "formData": {
+            "photos": "MultipartFile[]"
+          }
+        }
+      ]
+    },
+    "notifications": {
+      "basePath": "/notifications",
+      "public": false,
+      "requiredRole": "Authentifié",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/notifications/utilisateur/{utilisateurId}",
+          "description": "Récupérer les notifications d'un utilisateur",
+          "authRequired": true,
+          "pathParams": ["utilisateurId"]
+        },
+        {
+          "method": "GET",
+          "path": "/notifications/utilisateur/{utilisateurId}/non-lues",
+          "description": "Récupérer les notifications non lues",
+          "authRequired": true,
+          "pathParams": ["utilisateurId"]
+        },
+        {
+          "method": "GET",
+          "path": "/notifications/utilisateur/{utilisateurId}/recentes",
+          "description": "Récupérer les notifications récentes (7 derniers jours)",
+          "authRequired": true,
+          "pathParams": ["utilisateurId"]
+        },
+        {
+          "method": "GET",
+          "path": "/notifications/utilisateur/{utilisateurId}/count-non-lues",
+          "description": "Compter les notifications non lues",
+          "authRequired": true,
+          "pathParams": ["utilisateurId"]
+        },
+        {
+          "method": "PUT",
+          "path": "/notifications/{notificationId}/marquer-lue",
+          "description": "Marquer une notification comme lue",
+          "authRequired": true,
+          "pathParams": ["notificationId"]
+        },
+        {
+          "method": "PUT",
+          "path": "/notifications/utilisateur/{utilisateurId}/marquer-toutes-lues",
+          "description": "Marquer toutes les notifications comme lues",
+          "authRequired": true,
+          "pathParams": ["utilisateurId"]
+        },
+        {
+          "method": "DELETE",
+          "path": "/notifications/{notificationId}",
+          "description": "Supprimer une notification",
+          "authRequired": true,
+          "pathParams": ["notificationId"]
+        }
+      ]
+    },
+    "avis": {
+      "basePath": "/avis",
+      "public": false,
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/avis/commande/{commandeId}",
+          "description": "Donner un avis sur une commande",
+          "authRequired": true,
+          "requiredRole": "CONSOMMATEUR ou ADMIN",
+          "pathParams": ["commandeId"],
+          "queryParams": ["consommateurId", "note", "commentaire?"]
+        },
+        {
+          "method": "GET",
+          "path": "/avis/producteur/{producteurId}",
+          "description": "Voir les avis d'un producteur",
+          "authRequired": true,
+          "pathParams": ["producteurId"]
+        },
+        {
+          "method": "GET",
+          "path": "/avis/producteur/{producteurId}/moyenne",
+          "description": "Obtenir la moyenne des notes d'un producteur",
+          "authRequired": true,
+          "pathParams": ["producteurId"]
+        },
+        {
+          "method": "GET",
+          "path": "/avis/commande/{commandeId}",
+          "description": "Voir l'avis d'une commande",
+          "authRequired": true,
+          "pathParams": ["commandeId"]
+        }
+      ]
+    }
+  },
+  "authentication": {
+    "type": "JWT",
+    "headerName": "Authorization",
+    "headerFormat": "Bearer <token>",
+    "roles": [
+      "ROLE_ADMIN",
+      "ROLE_PRODUCTEUR",
+      "ROLE_CONSOMMATEUR"
+    ]
+  },
+  "swagger": {
+    "ui": "http://localhost:8080/suguconnect/swagger-ui.html",
+    "apiDocs": "http://localhost:8080/suguconnect/v3/api-docs"
+  }
+}
+
