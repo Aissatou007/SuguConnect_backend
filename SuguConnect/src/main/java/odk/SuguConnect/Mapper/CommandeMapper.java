@@ -57,7 +57,9 @@ public class CommandeMapper {
                 produit.getId(),
                 produit.getNom(),
                 produit.getPrixUnitaire(),
-                producteurId
+                produit.getProducteur() != null ? produit.getProducteur().getId() : null,
+                produit.getProducteur() != null ? produit.getProducteur().getNom() : "Inconnu",
+                produit.getProducteur() != null ? produit.getProducteur().getPrenom() : "Inconnu"
         );
     }
     

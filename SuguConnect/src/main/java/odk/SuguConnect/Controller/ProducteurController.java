@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import odk.SuguConnect.DTO.Request.ProducteurRequestDTO;
 import odk.SuguConnect.DTO.Request.ProduitRequestDTO;
 import odk.SuguConnect.DTO.Responses.ProducteurResponseDTO;
+import odk.SuguConnect.DTO.Responses.VenteDTO;
 import odk.SuguConnect.Entity.Categorie;
 import odk.SuguConnect.Entity.Commande;
 import odk.SuguConnect.Entity.Produit;
@@ -141,9 +142,9 @@ public class ProducteurController {
             @RequestPart(value = "quantite") String quantite,
             @RequestPart(value = "categorieId") String categorieId,
             @Parameter(
-                description = "Photos du produit (minimum 1, maximum 4). Pour ajouter plusieurs fichiers, sélectionnez ce champ plusieurs fois.",
-                required = true,
-                content = @Content(mediaType = "multipart/form-data")
+                    description = "Photos du produit (minimum 1, maximum 4). Pour ajouter plusieurs fichiers, sélectionnez ce champ plusieurs fois.",
+                    required = true,
+                    content = @Content(mediaType = "multipart/form-data")
             )
             @RequestPart(value = "photos") List<MultipartFile> photos) {
 
@@ -159,7 +160,7 @@ public class ProducteurController {
         float prixUnitaireFloat;
         int quantiteInt;
         int categorieIdInt;
-        
+
         try {
             prixUnitaireFloat = Float.parseFloat(prixUnitaire);
             quantiteInt = Integer.parseInt(quantite);
@@ -189,7 +190,7 @@ public class ProducteurController {
         produit.setUnite(odk.SuguConnect.Enums.Unite.valueOf(unite.toUpperCase()));
         produit.setQuantite(quantiteInt);
         produit.setPhotos(photoUrls);
-        
+
         // Associer la catégorie
         Categorie categorie = new Categorie();
         categorie.setId(categorieIdInt);
@@ -213,7 +214,42 @@ public class ProducteurController {
         List<Produit> produits = produitService.listerLesProduits(producteurId);
         return ResponseEntity.ok(produits);
     }
-    
+    @GetMapping(path = "/{producteurId}/ventes")
+    @Operation(
+            summary = "Historique des ventes d'un producteur",
+            description = "Retourne l'historique des ventes pour tous les produits du producteur"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Historique récupéré avec succès"),
+            @ApiResponse(responseCode = "404", description = "Producteur non trouvé")
+    })
+    public ResponseEntity<List<VenteDTO>> getHistoriqueVentes(
+            @Parameter(description = "ID du producteur", required = true)
+            @PathVariable int producteurId) {
+
+        // Vérifier que le producteur existe
+        ProducteurResponseDTO producteur = producteurService.recupererUnProducteur(producteurId);
+
+        // Récupérer toutes les commandes liées aux produits du producteur
+        List<Commande> commandes = commandeService.getCommandesParProducteur(producteurId);
+
+        // Construire la liste des ventes
+        List<VenteDTO> ventes = new ArrayList<>();
+        for (Commande commande : commandes) {
+            commande.getCommandeProduits().forEach(cp -> {
+                if (cp.getProduit().getProducteur().getId() == producteurId) {
+                    ventes.add(new VenteDTO(
+                            commande.getDateCommande().toString(),
+                            cp.getProduit().getNom(),
+                            cp.getQuantite(),
+                            cp.getQuantite() * cp.getProduit().getPrixUnitaire()
+                    ));
+                }
+            });
+        }
+
+        return ResponseEntity.ok(ventes);
+    }
     @GetMapping(path = "/{producteurId}/produit/recherche")
     @Operation(
             summary = "Rechercher des produits d'un producteur par nom",
@@ -261,15 +297,15 @@ public class ProducteurController {
             @RequestPart(value = "unite", required = false) String unite,
             @RequestPart(value = "quantite", required = false) String quantite,
             @Parameter(
-                description = "Nouvelles photos du produit (optionnel, maximum 4). Pour plusieurs fichiers, sélectionnez ce champ plusieurs fois.",
-                content = @Content(mediaType = "multipart/form-data")
+                    description = "Nouvelles photos du produit (optionnel, maximum 4). Pour plusieurs fichiers, sélectionnez ce champ plusieurs fois.",
+                    content = @Content(mediaType = "multipart/form-data")
             )
             @RequestPart(value = "photos", required = false) List<MultipartFile> photos) {
 
         // Créer le produit modifié
         Produit produitModifie = new Produit();
         produitModifie.setId(produitId);
-        
+
         try {
             if (nom != null) produitModifie.setNom(nom);
             if (description != null) produitModifie.setDescription(description);
@@ -323,7 +359,7 @@ public class ProducteurController {
         String message = produitService.supprimerProduit(produitId, producteurId);
         return ResponseEntity.ok(message);
     }
-    
+
     @PutMapping(path = "/commande/{commandeId}/statut")
     @Operation(
             summary = "Changer le statut d'une commande",
@@ -343,7 +379,7 @@ public class ProducteurController {
             @RequestParam StatutCommande nouveauStatut,
             @Parameter(description = "Motif de rejet (obligatoire si REFUSEE)")
             @RequestParam(required = false) String motifRejet) {
-        
+
         Commande commande = commandeService.changerStatutCommande(commandeId, producteurId, nouveauStatut, motifRejet);
         return ResponseEntity.ok(commande);
     }

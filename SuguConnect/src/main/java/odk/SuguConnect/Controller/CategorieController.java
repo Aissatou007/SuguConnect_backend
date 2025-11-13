@@ -39,8 +39,8 @@ public class CategorieController {
     public ResponseEntity<Categorie> creerCategorie(
             @Parameter(description = "Libellé de la catégorie", required = true)
             @RequestParam String libelle,
-            @Parameter(description = "Photo de la catégorie", required = true)
-            @RequestParam MultipartFile photo) {
+            @Parameter(description = "Photo de la catégorie", required = false)
+            @RequestParam(required = false) MultipartFile photo) {
         try {
             Categorie categorie = categorieService.creerCategorie(libelle, photo);
             return ResponseEntity.ok(categorie);

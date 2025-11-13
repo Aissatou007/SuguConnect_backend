@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import odk.SuguConnect.DTO.Responses.AvisResponseDTO;
 import odk.SuguConnect.Entity.Avis;
 import odk.SuguConnect.Service.AvisService;
 import org.springframework.http.HttpStatus;
@@ -95,5 +96,13 @@ public class AvisController {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(avis);
+    }
+    @GetMapping("/all")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Lister tous les avis", description = "Retourne la liste complète des avis pour les administrateurs")
+    @ApiResponse(responseCode = "200", description = "Liste des avis récupérée avec succès")
+    public ResponseEntity<List<AvisResponseDTO>> getAllAvis() {
+        List<AvisResponseDTO> avisList = avisService.getAllAvisDTO();
+        return ResponseEntity.ok(avisList);
     }
 }

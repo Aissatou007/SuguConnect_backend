@@ -4,6 +4,7 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import odk.SuguConnect.DTO.Request.PasserCommandePanierDTO;
 import odk.SuguConnect.DTO.Request.ProduitCommandeDTO;
+import odk.SuguConnect.DTO.Responses.HistoriqueVenteDTO;
 import odk.SuguConnect.Entity.*;
 import odk.SuguConnect.Enums.ModePaiement;
 import odk.SuguConnect.Enums.StatutCommande;
@@ -59,7 +60,16 @@ public class CommandeService {
      * Passer une commande avec des produits spécifiques (sans utiliser le panier)
      * Permet au consommateur de choisir directement les produits à commander
      */
-
+    public List<Commande> getCommandesParProducteur(int producteurId) {
+        // Récupérer toutes les commandes contenant au moins un produit du producteur
+        return commandeRepository.findAll().stream()
+                .filter(cmd -> cmd.getCommandeProduits().stream()
+                        .anyMatch(cp -> cp.getProduit().getProducteur().getId() == producteurId))
+                .toList();
+    }
+    public int countCommandesParConsommateur(Long consommateurId) {
+        return commandeRepository.countByConsommateurId(consommateurId); // méthode JPA
+    }
     public List<Commande> voirCommandesParConsommateur(int idConsommateur) {
         Consommateur consommateur = findConsommateurById(idConsommateur);
         List<Commande> commandes = commandeRepository.findByConsommateur(consommateur);
@@ -77,7 +87,20 @@ public class CommandeService {
     public List<Commande> voirToutesLesCommandes() {
         return commandeRepository.findAll();
     }
-    
+    public List<HistoriqueVenteDTO> getHistoriqueVentesProduit(int produitId) {
+        return commandeRepository.findAll().stream()
+                .flatMap(commande -> commande.getCommandeProduits().stream()
+                        .filter(cp -> cp.getProduit().getId() == produitId)
+                        .map(cp -> {
+                            HistoriqueVenteDTO dto = new HistoriqueVenteDTO();
+                            dto.setNomConsommateur(commande.getConsommateur().getPrenom() + " " + commande.getConsommateur().getNom());
+                            dto.setQuantite(cp.getQuantite());
+                            dto.setMontant(cp.getPrixUnitaire() * cp.getQuantite());
+                            dto.setDateCommande(commande.getDateCommande());
+                            return dto;
+                        }))
+                .toList();
+    }
     @Transactional
     public Commande changerStatutCommande(int commandeId, int producteurId, StatutCommande nouveauStatut, String motifRejet) {
         Commande commande = findCommandeById(commandeId);

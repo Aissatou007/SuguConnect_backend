@@ -16,7 +16,7 @@ import java.util.List;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@JsonIgnoreProperties({"paniers", "consommateurs", "commandeProduitList", "panierProduits", "producteur"})
+@JsonIgnoreProperties({"paniers", "consommateurs", "commandeProduitList", "panierProduits"})
 public class Produit {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
