@@ -6,14 +6,14 @@ import odk.SuguConnect.Entity.Consommateur;
 
 public class ConsommateurMapper {
     public static Consommateur toEntity(ConsommateurRequestDTO dtoConsommateur, Consommateur consommateur){
-        consommateur.setNom(dtoConsommateur.nom());
-        consommateur.setPrenom(dtoConsommateur.prenom());
-        consommateur.setTelephone(dtoConsommateur.telephone());
-        consommateur.setEmail(dtoConsommateur.email());
-        consommateur.setLocalisation(dtoConsommateur.localisation());
-        consommateur.setLatitude(dtoConsommateur.latitude());
-        consommateur.setLongitude(dtoConsommateur.longitude());
-        consommateur.setMotDePasse(dtoConsommateur.motDePasse());
+        consommateur.setNom(dtoConsommateur.getNom());
+        consommateur.setPrenom(dtoConsommateur.getPrenom());
+        consommateur.setTelephone(dtoConsommateur.getTelephone());
+        consommateur.setEmail(dtoConsommateur.getEmail());
+        consommateur.setLocalisation(dtoConsommateur.getLocalisation());
+        consommateur.setLatitude(dtoConsommateur.getLatitude());
+        consommateur.setLongitude(dtoConsommateur.getLongitude());
+        consommateur.setMotDePasse(dtoConsommateur.getMotDePasse());
         return consommateur;
     }
 

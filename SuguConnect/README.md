@@ -93,6 +93,8 @@ src/main/java/odk/SuguConnect/
 - **Panier** : Panier d'achat des consommateurs
 - **Livraison** : Suivi des livraisons
 - **Notification** : Notifications système
+- **Conversation** : Discussions entre consommateurs et producteurs
+- **Message** : Messages échangés dans les conversations
 
 ## API Endpoints
 
@@ -132,6 +134,17 @@ src/main/java/odk/SuguConnect/
 - `POST /consommateur/{idConsommateur}/panier/ajouter/{idProduit}` - Ajouter au panier
 - `DELETE /consommateur/{idConsommateur}/panier/retirer/{idProduit}` - Retirer du panier
 - `POST /consommateur/{idConsommateur}/commande` - Passer une commande
+
+### Chat (`/api/chat`)
+- `POST /api/chat/conversation` - Créer ou récupérer une conversation
+- `GET /api/chat/conversations/consommateur/{consommateurId}` - Récupérer les conversations d'un consommateur
+- `GET /api/chat/conversations/producteur/{producteurId}` - Récupérer les conversations d'un producteur
+- `POST /api/chat/message/texte` - Envoyer un message texte
+- `POST /api/chat/message/fichier` - Envoyer un message avec fichier
+- `GET /api/chat/messages/{conversationId}` - Récupérer les messages d'une conversation
+- `PUT /api/chat/message/{messageId}/lu` - Marquer un message comme lu
+- `POST /api/chat/upload/fichier` - Uploader un fichier pour le chat
+- `GET /api/chat/download/{fileName}` - Télécharger un fichier de chat
 
 ### Catégorie (`/categorie`)
 - `POST /categorie` - Créer une catégorie
@@ -178,6 +191,13 @@ src/main/java/odk/SuguConnect/
 - `ADMIN` : Administrateur
 - `PRODUCTEUR` : Producteur
 - `CONSOMMATEUR` : Consommateur
+
+### TypeMessage
+- `TEXTE` : Message texte
+- `IMAGE` : Message avec image
+- `VOCAL` : Message vocal
+- `DOCUMENT` : Message avec document
+- Types de notification (COMMANDE_PASSEE, COMMANDE_VALIDEE, etc.)
 
 ## Sécurité
 

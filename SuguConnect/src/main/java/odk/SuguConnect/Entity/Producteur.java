@@ -16,7 +16,7 @@ import java.util.List;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@JsonIgnoreProperties({"produits", "motDePasse"})
+@JsonIgnoreProperties({"produits", "motDePasse", "conversations"})
 public class Producteur extends Utilisateur {
     @Enumerated(EnumType.STRING)
     private StatutProducteur statutProducteur;
@@ -25,4 +25,8 @@ public class Producteur extends Utilisateur {
     private String photoUrl;
     @OneToMany(mappedBy = "producteur", cascade = CascadeType.ALL)
     private List<Produit> produits;
+    
+    // Conversations du producteur
+    @OneToMany(mappedBy = "producteur", cascade = CascadeType.ALL)
+    private List<Conversation> conversations;
 }

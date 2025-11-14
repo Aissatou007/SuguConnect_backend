@@ -54,7 +54,7 @@ public class ProducteurController {
                     required = true
             )
             @RequestBody ProducteurRequestDTO producteurRequestDTO){
-        String message = producteurService.inscriptionProducteur(producteurRequestDTO, producteurRequestDTO.telephone());
+        String message = producteurService.inscriptionProducteur(producteurRequestDTO, producteurRequestDTO.getTelephone());
         return ResponseEntity.status(HttpStatus.CREATED).body(message);
     }
 
@@ -338,5 +338,26 @@ public class ProducteurController {
         
         Commande commande = commandeService.changerStatutCommande(commandeId, producteurId, nouveauStatut, motifRejet);
         return ResponseEntity.ok(commande);
+    }
+    
+    @GetMapping(path = "/{producteurId}/commandes")
+    @Operation(
+            summary = "Récupérer les commandes d'un producteur",
+            description = "Retourne toutes les commandes d'un producteur avec filtres optionnels par statut et recherche"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Commandes récupérées avec succès"),
+            @ApiResponse(responseCode = "403", description = "Non autorisé")
+    })
+    public ResponseEntity<List<Commande>> getCommandesProducteur(
+            @Parameter(description = "ID du producteur", required = true)
+            @PathVariable int producteurId,
+            @Parameter(description = "Statut de la commande (VALIDEE, EN_LIVRAISON, LIVREE, etc.)")
+            @RequestParam(required = false) StatutCommande statut,
+            @Parameter(description = "Terme de recherche (numéro commande, nom/prénom client)")
+            @RequestParam(required = false) String search) {
+        
+        List<Commande> commandes = commandeService.voirCommandesParProducteur(producteurId, statut, search);
+        return ResponseEntity.ok(commandes);
     }
 }

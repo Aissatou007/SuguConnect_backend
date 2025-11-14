@@ -6,16 +6,16 @@ import odk.SuguConnect.Entity.Producteur;
 
 public class ProducteurMapper {
     public static Producteur toEntity(ProducteurRequestDTO producteurRequestDTO, Producteur producteur){
-        producteur.setNom(producteurRequestDTO.nom());
-        producteur.setPrenom(producteurRequestDTO.prenom());
-        producteur.setTelephone(producteurRequestDTO.telephone());
-        producteur.setEmail(producteurRequestDTO.email());
-        producteur.setLocalisation(producteurRequestDTO.localisation());
-        producteur.setLatitude(producteurRequestDTO.latitude());
-        producteur.setLongitude(producteurRequestDTO.longitude());
-        producteur.setMotDePasse(producteurRequestDTO.motDePasse());
-        producteur.setDescription(producteurRequestDTO.description());
-        producteur.setNomFerme(producteurRequestDTO.nomFerme());
+        producteur.setNom(producteurRequestDTO.getNom());
+        producteur.setPrenom(producteurRequestDTO.getPrenom());
+        producteur.setTelephone(producteurRequestDTO.getTelephone());
+        producteur.setEmail(producteurRequestDTO.getEmail());
+        producteur.setLocalisation(producteurRequestDTO.getLocalisation());
+        producteur.setLatitude(producteurRequestDTO.getLatitude());
+        producteur.setLongitude(producteurRequestDTO.getLongitude());
+        producteur.setMotDePasse(producteurRequestDTO.getMotDePasse());
+        producteur.setDescription(producteurRequestDTO.getDescription());
+        producteur.setNomFerme(producteurRequestDTO.getNomFerme());
         return producteur;
     }
     public static ProducteurResponseDTO toResponse(Producteur producteur){

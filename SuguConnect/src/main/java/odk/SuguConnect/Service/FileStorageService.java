@@ -22,11 +22,13 @@ import java.util.UUID;
 public class FileStorageService {
 
     private final Path fileStorageLocation;
+    private final ImageService imageService;
 
     @Autowired
-    public FileStorageService(FileStorageProperties fileStorageProperties) {
+    public FileStorageService(FileStorageProperties fileStorageProperties, ImageService imageService) {
         this.fileStorageLocation = Paths.get(fileStorageProperties.getUploadDir())
                 .toAbsolutePath().normalize();
+        this.imageService = imageService;
 
         try {
             Files.createDirectories(this.fileStorageLocation);
@@ -39,6 +41,13 @@ public class FileStorageService {
      * Stocke un fichier unique
      */
     public String storeFile(MultipartFile file) {
+        return storeFileWithThumbnail(file, 300, 300); // Valeurs par défaut pour les vignettes
+    }
+
+    /**
+     * Stocke un fichier unique avec génération de vignettes
+     */
+    public String storeFileWithThumbnail(MultipartFile file, int thumbnailWidth, int thumbnailHeight) {
         // Nettoyer le nom du fichier
         String originalFileName = StringUtils.cleanPath(file.getOriginalFilename());
         
@@ -58,6 +67,11 @@ public class FileStorageService {
             // Copier le fichier vers l'emplacement cible
             Path targetLocation = this.fileStorageLocation.resolve(newFileName);
             Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
+
+            // Générer et stocker les vignettes si le fichier est une image
+            if (isImageFile(fileExtension)) {
+                generateAndStoreThumbnails(file, newFileName, thumbnailWidth, thumbnailHeight);
+            }
 
             return newFileName;
         } catch (IOException ex) {
@@ -121,6 +135,36 @@ public class FileStorageService {
             for (String fileName : fileNames) {
                 deleteFile(fileName);
             }
+        }
+    }
+
+    /**
+     * Vérifie si un fichier est une image
+     */
+    private boolean isImageFile(String fileExtension) {
+        return fileExtension != null && 
+               (fileExtension.equalsIgnoreCase(".jpg") || 
+                fileExtension.equalsIgnoreCase(".jpeg") || 
+                fileExtension.equalsIgnoreCase(".png") || 
+                fileExtension.equalsIgnoreCase(".gif") || 
+                fileExtension.equalsIgnoreCase(".bmp"));
+    }
+
+    /**
+     * Génère et stocke les vignettes pour une image
+     */
+    private void generateAndStoreThumbnails(MultipartFile originalFile, String originalFileName, int width, int height) {
+        try {
+            // Générer la vignette en utilisant le nouveau ImageService
+            byte[] thumbnailBytes = imageService.createThumbnail(originalFile, width, height);
+            
+            // Sauvegarder la vignette
+            String thumbnailFileName = "thumb_" + originalFileName;
+            Path thumbnailPath = this.fileStorageLocation.resolve(thumbnailFileName);
+            Files.write(thumbnailPath, thumbnailBytes);
+        } catch (Exception e) {
+            // En cas d'erreur, on continue sans vignette
+            System.err.println("Impossible de générer la vignette pour " + originalFileName + ": " + e.getMessage());
         }
     }
 

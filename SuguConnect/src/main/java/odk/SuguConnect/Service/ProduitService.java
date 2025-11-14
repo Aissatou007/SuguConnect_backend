@@ -1,55 +1,59 @@
 package odk.SuguConnect.Service;
 
 import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
 import odk.SuguConnect.Entity.Categorie;
-import odk.SuguConnect.Entity.Producteur;
 import odk.SuguConnect.Entity.Produit;
-import odk.SuguConnect.Enums.StatutProducteur;
+import odk.SuguConnect.Entity.Producteur;
 import odk.SuguConnect.Repository.CategorieRepository;
-import odk.SuguConnect.Repository.ProducteurRepository;
 import odk.SuguConnect.Repository.ProduitRepository;
+import odk.SuguConnect.Repository.ProducteurRepository;
 import org.springframework.stereotype.Service;
 
-import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Pattern;
 
 @Service
+@RequiredArgsConstructor
 public class ProduitService {
-    private final ProduitRepository produitRepository ;
-    private final ProducteurRepository producteurRepository ;
+    private final ProduitRepository produitRepository;
+    private final ProducteurRepository producteurRepository;
     private final CategorieRepository categorieRepository;
-
-    // Liste noire : produits interdits (non agricoles)
-    private final List<String> produitsInterdits = Arrays.asList(
-            "téléphone", "telephone", "voiture", "ordinateur", "pc",
-            "tv", "télé", "chaussure", "vetement", "parfum", "montre", "casque",
-            "laptop", "smartphone", "vélo", "bicyclette", "bijoux", "lunettes",
-            "sac", "portable", "tablette", "console", "jeux", "vêtements",
-            "cosmétiques", "maquillage", "jouet", "toys", "meubles", "furniture",
-            "électroménager", "appareil", "machine", "outil", "tools",
-            "médicament", "medicine", "pharmacie", "drug", "book", "livre",
-            "magazine", "journal", "cd", "dvd", "film", "music", "musique",
-            "instrument", "musical", "sport", "fitness", "gym", "beauté", "beauty"
-    );
-
-    public ProduitService(ProduitRepository produitRepository, 
-                         ProducteurRepository producteurRepository,
-                         CategorieRepository categorieRepository) {
-        this.produitRepository = produitRepository;
-        this.producteurRepository = producteurRepository;
-        this.categorieRepository = categorieRepository;
-    }
-
-    public Produit ajouterProduit(Produit produit , int producteurId){
-        // Valider le nom du produit
-        validerNomProduit(produit.getNom());
-        
-        Producteur producteur = producteurRepository.findById(producteurId)
-                .orElseThrow(() -> new EntityNotFoundException("Ce producteur n'existe pas"));
-        if(producteur.getStatutProducteur() != StatutProducteur.ACCEPTE){
-            throw new IllegalStateException("Vous n'avez pas de droit pour ajouter un produit");
+    
+    private static final Pattern NOM_PRODUIT_PATTERN = Pattern.compile("^[a-zA-Z0-9À-ÿ\\s.'-]{3,50}$");
+    
+    // ========== Méthodes privées de validation ==========
+    
+    private void validerNomProduit(String nom) {
+        if (nom == null || nom.trim().isEmpty()) {
+            throw new IllegalArgumentException("Le nom du produit ne peut pas être vide");
         }
-        if(produit.getPhotos() == null || produit.getPhotos().isEmpty()){
+        if (!NOM_PRODUIT_PATTERN.matcher(nom.trim()).matches()) {
+            throw new IllegalArgumentException("Le nom du produit doit contenir entre 3 et 50 caractères alphanumériques");
+        }
+    }
+    
+    private void validerPrix(float prix) {
+        if (prix <= 0) {
+            throw new IllegalArgumentException("Le prix doit être supérieur à zéro");
+        }
+    }
+    
+    private void validerQuantite(int quantite) {
+        if (quantite < 0) {
+            throw new IllegalArgumentException("La quantité ne peut pas être négative");
+        }
+    }
+    
+    // ========== Méthodes producteur ==========
+    
+    public Produit ajouterProduit(Produit produit, int producteurId) {
+        // Validation des données
+        validerNomProduit(produit.getNom());
+        validerPrix(produit.getPrixUnitaire());
+        validerQuantite(produit.getQuantite());
+        
+        if (produit.getPhotos() == null || produit.getPhotos().isEmpty()) {
             throw new IllegalArgumentException("Le produit doit contenir au moins une photo");
         }
         if(produit.getPhotos().size() > 4){
@@ -63,6 +67,8 @@ public class ProduitService {
             produit.setCategorie(categorie);
         }
         
+        Producteur producteur = producteurRepository.findById(producteurId)
+                .orElseThrow(() -> new EntityNotFoundException("Ce producteur n'existe pas"));
         produit.setProducteur(producteur);
         produit.setStockDisponible(produit.getQuantite());
         produitRepository.save(produit);
@@ -82,23 +88,40 @@ public class ProduitService {
             produit.setNom(produitModifie.getNom());
         }
         
-        // Mettre à jour uniquement les champs non null
+        // Valider et mettre à jour le prix s'il est fourni
+        if(produitModifie.getPrixUnitaire() > 0) {
+            validerPrix(produitModifie.getPrixUnitaire());
+            produit.setPrixUnitaire(produitModifie.getPrixUnitaire());
+        }
+        
+        // Valider et mettre à jour la quantité si elle est fournie
+        if(produitModifie.getQuantite() >= 0) {
+            validerQuantite(produitModifie.getQuantite());
+            produit.setQuantite(produitModifie.getQuantite());
+            // Mettre à jour le stock disponible en conséquence
+            produit.setStockDisponible(produitModifie.getQuantite());
+        }
+        
+        // Mettre à jour la description si elle est fournie
         if(produitModifie.getDescription() != null) {
             produit.setDescription(produitModifie.getDescription());
         }
-        if(produitModifie.getPrixUnitaire() > 0) {
-            produit.setPrixUnitaire(produitModifie.getPrixUnitaire());
-        }
+        
+        // Mettre à jour l'unité si elle est fournie
         if(produitModifie.getUnite() != null) {
             produit.setUnite(produitModifie.getUnite());
         }
-        if(produitModifie.getQuantite() > 0) {
-            produit.setQuantite(produitModifie.getQuantite());
-            produit.setStockDisponible(produitModifie.getQuantite());
+        
+        // Mettre à jour la catégorie si elle est fournie
+        if(produitModifie.getCategorie() != null && produitModifie.getCategorie().getId() > 0) {
+            Categorie categorie = categorieRepository.findById(produitModifie.getCategorie().getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Cette catégorie n'existe pas"));
+            produit.setCategorie(categorie);
         }
-        // Mettre à jour les photos uniquement si elles sont fournies
+        
+        // Mettre à jour les photos si elles sont fournies
         if(produitModifie.getPhotos() != null && !produitModifie.getPhotos().isEmpty()) {
-            if(produitModifie.getPhotos().size() > 4){
+            if(produitModifie.getPhotos().size() > 4) {
                 throw new IllegalArgumentException("Le produit ne peut pas avoir plus de 4 photos");
             }
             produit.setPhotos(produitModifie.getPhotos());
@@ -136,27 +159,14 @@ public class ProduitService {
         return "Le produit a été supprimé";
     }
     
-    // ========== Méthodes privées utilitaires ==========
-    
     /**
-     * Valider le nom du produit pour s'assurer qu'il ne figure pas dans la liste noire
-     * @param nomProduit Le nom du produit à valider
-     * @throws IllegalArgumentException si le nom du produit est interdit
+     * Récupère un produit par son ID
+     * @param produitId ID du produit
+     * @return Le produit correspondant
+     * @throws EntityNotFoundException si le produit n'existe pas
      */
-    private void validerNomProduit(String nomProduit) {
-        if (nomProduit == null || nomProduit.trim().isEmpty()) {
-            throw new IllegalArgumentException("Le nom du produit ne peut pas être vide");
-        }
-        
-        String nomNormalise = nomProduit.trim().toLowerCase();
-        
-        // Vérifier si le nom du produit figure dans la liste noire
-        for (String produitInterdit : produitsInterdits) {
-            if (nomNormalise.contains(produitInterdit)) {
-                throw new IllegalArgumentException(
-                    "Le nom du produit '" + nomProduit + "' n'est pas autorisé. " +
-                    "Veuillez choisir un autre nom.");
-            }
-        }
+    public Produit getProduitById(int produitId) {
+        return produitRepository.findById(produitId)
+                .orElseThrow(() -> new EntityNotFoundException("Produit non trouvé avec l'ID: " + produitId));
     }
 }

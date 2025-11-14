@@ -25,7 +25,13 @@ public enum TypeMessage {
     NOUVELLE_INSCRIPTION_PRODUCTEUR("Nouvelle inscription", "Un nouveau producteur s'est inscrit"),
     NOUVELLE_COMMANDE("Nouvelle commande", "Une nouvelle commande a été passée"),
     ACTIVITE_SUSPECTE("Activité suspecte", "Activité suspecte détectée"),
-    INFO_SYSTEME("Information système", "Information importante du système");
+    INFO_SYSTEME("Information système", "Information importante du système"),
+    
+    // Types de messages pour le chat
+    TEXTE,
+    IMAGE,
+    VOCAL,
+    DOCUMENT;
 
     private final String titre;
     private final String description;
@@ -33,6 +39,11 @@ public enum TypeMessage {
     TypeMessage(String titre, String description) {
         this.titre = titre;
         this.description = description;
+    }
+    
+    TypeMessage() {
+        this.titre = "";
+        this.description = "";
     }
 
     public String getTitre() {

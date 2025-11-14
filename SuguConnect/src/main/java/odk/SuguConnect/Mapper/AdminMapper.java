@@ -9,14 +9,14 @@ import odk.SuguConnect.Entity.Consommateur;
 
 public class AdminMapper {
     public static Admin toEntity(AdminRequestDTO dtoAdmin, Admin admin){
-        admin.setNom(dtoAdmin.nom());
-        admin.setPrenom(dtoAdmin.prenom());
-        admin.setTelephone(dtoAdmin.telephone());
-        admin.setEmail(dtoAdmin.email());
-        admin.setLocalisation(dtoAdmin.localisation());
-        admin.setLatitude(dtoAdmin.latitude());
-        admin.setLongitude(dtoAdmin.longitude());
-        admin.setMotDePasse(dtoAdmin.motDePasse());
+        admin.setNom(dtoAdmin.getNom());
+        admin.setPrenom(dtoAdmin.getPrenom());
+        admin.setTelephone(dtoAdmin.getTelephone());
+        admin.setEmail(dtoAdmin.getEmail());
+        admin.setLocalisation(dtoAdmin.getLocalisation());
+        admin.setLatitude(dtoAdmin.getLatitude());
+        admin.setLongitude(dtoAdmin.getLongitude());
+        admin.setMotDePasse(dtoAdmin.getMotDePasse());
         return admin;
     }
 
