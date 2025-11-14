@@ -62,7 +62,10 @@ public class SecurityConfig {
                         // Consultation publique - Produits disponibles (GET uniquement)
                         .requestMatchers(
                                 org.springframework.http.HttpMethod.GET,
-                                "/consommateur/produits"          // Voir les produits disponibles
+                                "/consommateur/produits",          // Voir les produits disponibles
+                                "/api/produits/populaires",        // Produits populaires
+                                "/api/produits/populaires/**",      // Tous les endpoints produits populaires
+                                "/api/mobile/**"                   // Tous les endpoints mobiles
                         ).permitAll()
                         
                         // Catégories publiques (GET uniquement)
@@ -78,6 +81,14 @@ public class SecurityConfig {
                                 org.springframework.http.HttpMethod.GET,
                                 "/producteur/{id}"
                         ).permitAll()
+                        
+                        // ============================================
+                        // ENDPOINTS PRODUCTEUR - Spécifiques (doivent être avant /**)
+                        // ============================================
+                        .requestMatchers(
+                                org.springframework.http.HttpMethod.GET,
+                                "/producteur/{producteurId}/commandes"
+                        ).hasAnyRole("PRODUCTEUR", "ADMIN")
                         
                         // ============================================
                         // ENDPOINTS FICHIERS (Upload/Delete nécessite authentification)

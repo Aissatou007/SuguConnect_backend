@@ -22,12 +22,12 @@ public class LivreurService {
 
     public LivreurResponseDTO creerLivreur(LivreurRequestDTO dto) {
         // Vérifier si le livreur existe déjà
-        if (livreurRepository.findByMatricule(dto.matricule()) != null) {
+        if (livreurRepository.findByMatricule(dto.getMatricule()) != null) {
             throw new IllegalArgumentException("Un livreur avec cette matricule existe déjà");
         }
         
         Livreur livreur = LivreurMapper.toEntity(dto, new Livreur());
-        livreur.setMotDePasse(passwordEncoder.encode(dto.motDePasse()));
+        livreur.setMotDePasse(passwordEncoder.encode(dto.getMotDePasse()));
         livreur.setRole(Role.LIVREUR);
         livreur.setDateInscription(LocalDate.now());
         livreur.setActif(true);
@@ -53,7 +53,7 @@ public class LivreurService {
                 .orElseThrow(() -> new EntityNotFoundException("Livreur non trouvé"));
         
         // Vérifier si la matricule est déjà utilisée par un autre livreur
-        Livreur existing = livreurRepository.findByMatricule(dto.matricule());
+        Livreur existing = livreurRepository.findByMatricule(dto.getMatricule());
         if (existing != null && existing.getId() != id) {
             throw new IllegalArgumentException("Cette matricule est déjà utilisée par un autre livreur");
         }
@@ -61,8 +61,8 @@ public class LivreurService {
         LivreurMapper.toEntity(dto, livreur);
         
         // Encoder le mot de passe uniquement s'il est fourni
-        if (dto.motDePasse() != null && !dto.motDePasse().isEmpty()) {
-            livreur.setMotDePasse(passwordEncoder.encode(dto.motDePasse()));
+        if (dto.getMotDePasse() != null && !dto.getMotDePasse().isEmpty()) {
+            livreur.setMotDePasse(passwordEncoder.encode(dto.getMotDePasse()));
         }
         
         Livreur saved = livreurRepository.save(livreur);

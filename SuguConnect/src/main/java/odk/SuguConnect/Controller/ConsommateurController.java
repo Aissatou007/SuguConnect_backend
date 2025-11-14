@@ -47,7 +47,7 @@ public class ConsommateurController {
                     required = true
             )
             @RequestBody ConsommateurRequestDTO consommateurRequestDTO) {
-        String message = consommateurService.inscriptionConsommateur(consommateurRequestDTO, consommateurRequestDTO.telephone());
+        String message = consommateurService.inscriptionConsommateur(consommateurRequestDTO, consommateurRequestDTO.getTelephone());
         return ResponseEntity.ok(message);
     }
 

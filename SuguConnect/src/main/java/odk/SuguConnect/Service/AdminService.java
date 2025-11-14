@@ -71,11 +71,11 @@ public class AdminService {
     }
     public AdminResponseDTO createAdmin(AdminRequestDTO dto) {
         verifierRoleAdmin();
-        if (adminRepository.existsByEmail(dto.email()) || adminRepository.findByTelephone(dto.telephone()) != null) {
+        if (adminRepository.existsByEmail(dto.getEmail()) || adminRepository.findByTelephone(dto.getTelephone()) != null) {
             throw new IllegalArgumentException("Cet admin  existe déjà");
         }
         Admin admin = AdminMapper.toEntity(dto, new Admin());
-        admin.setMotDePasse(passwordEncoder.encode(dto.motDePasse()));
+        admin.setMotDePasse(passwordEncoder.encode(dto.getMotDePasse()));
         admin.setRole(Role.ADMIN);
         admin.setDateInscription(LocalDate.now());
         admin.setActif(true);
@@ -95,12 +95,12 @@ public class AdminService {
         Admin admin = adminRepository.findById(id).orElseThrow(()
                 -> new EntityNotFoundException("Cet admin n'existe pas"));
 
-        admin.setNom(adminRequestDTO.nom());
-        admin.setPrenom(adminRequestDTO.prenom());
-        admin.setTelephone(adminRequestDTO.telephone());
-        admin.setEmail(adminRequestDTO.email());
-        admin.setLocalisation(adminRequestDTO.localisation());
-        admin.setMotDePasse(adminRequestDTO.motDePasse());
+        admin.setNom(adminRequestDTO.getNom());
+        admin.setPrenom(adminRequestDTO.getPrenom());
+        admin.setTelephone(adminRequestDTO.getTelephone());
+        admin.setEmail(adminRequestDTO.getEmail());
+        admin.setLocalisation(adminRequestDTO.getLocalisation());
+        admin.setMotDePasse(adminRequestDTO.getMotDePasse());
 
         adminRepository.save(admin);
 
@@ -131,12 +131,12 @@ public class AdminService {
     public Producteur createProducteur(ProducteurRequestDTO dto) {
         verifierRoleAdmin();
         
-        if (producteurRepository.findByTelephone(dto.telephone()) != null) {
+        if (producteurRepository.findByTelephone(dto.getTelephone()) != null) {
             throw new IllegalArgumentException("Ce producteur existe déjà");
         }
         
         Producteur producteur = ProducteurMapper.toEntity(dto, new Producteur());
-        producteur.setMotDePasse(passwordEncoder.encode(dto.motDePasse()));
+        producteur.setMotDePasse(passwordEncoder.encode(dto.getMotDePasse()));
         producteur.setRole(Role.PRODUCTEUR);
         producteur.setStatutProducteur(StatutProducteur.ACCEPTE);
         producteur.setDateInscription(LocalDate.now());

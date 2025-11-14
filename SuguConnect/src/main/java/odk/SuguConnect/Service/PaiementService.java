@@ -160,9 +160,17 @@ public class PaiementService {
         Paiement paiement = findPaiementById(paiementId);
         
         switch (statut.toUpperCase()) {
-            case "SUCCESS", "COMPLETED" -> validerPaiement(paiementId, referenceTransaction);
-            case "FAILED", "CANCELLED" -> marquerPaiementEchoue(paiementId, "Transaction annulée par l'utilisateur");
-            default -> paiement.setStatutPaiement(StatutPaiement.EN_ATTENTE);
+            case "SUCCESS":
+            case "COMPLETED":
+                validerPaiement(paiementId, referenceTransaction);
+                break;
+            case "FAILED":
+            case "CANCELLED":
+                marquerPaiementEchoue(paiementId, "Transaction annulée par l'utilisateur");
+                break;
+            default:
+                paiement.setStatutPaiement(StatutPaiement.EN_ATTENTE);
+                break;
         }
         
         paiementRepository.save(paiement);

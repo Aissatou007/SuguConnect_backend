@@ -62,15 +62,15 @@ public class CommandeService {
         Consommateur consommateur = findConsommateurById(idConsommateur);
         
         // Créer la commande
-        Commande commande = creerCommande(consommateur, request.modePaiement());
+        Commande commande = creerCommande(consommateur, request.getModePaiement());
         
         // Traiter les produits spécifiés
-        double montantTotal = traiterProduitsSpecifiques(request.produits(), commande);
+        double montantTotal = traiterProduitsSpecifiques(request.getProduits(), commande);
         commande.setMontantTotal(montantTotal);
         commandeRepository.save(commande);
         
         // Créer le paiement
-        Paiement paiement = creerPaiement(commande, request.modePaiement(), montantTotal);
+        Paiement paiement = creerPaiement(commande, request.getModePaiement(), montantTotal);
         commande.setPaiement(paiement);
         commandeRepository.save(commande);
         
@@ -95,6 +95,29 @@ public class CommandeService {
     
     public List<Commande> voirToutesLesCommandes() {
         return commandeRepository.findAll();
+    }
+    
+    public List<Commande> voirCommandesParProducteur(int producteurId, StatutCommande statut, String search) {
+        List<Commande> commandes;
+        
+        // Filtrer par producteur et optionnellement par statut
+        if (statut != null) {
+            commandes = commandeRepository.findByProducteurIdAndStatut(producteurId, statut);
+        } else {
+            commandes = commandeRepository.findByProducteurId(producteurId);
+        }
+        
+        // Filtrer par recherche si nécessaire
+        if (search != null && !search.trim().isEmpty()) {
+            String searchLower = search.toLowerCase();
+            commandes = commandes.stream()
+                .filter(c -> c.getIdCommande() != 0 && String.valueOf(c.getIdCommande()).contains(searchLower)
+                          || c.getConsommateur().getNom().toLowerCase().contains(searchLower)
+                          || c.getConsommateur().getPrenom().toLowerCase().contains(searchLower))
+                .toList();
+        }
+        
+        return commandes;
     }
     
     @Transactional
@@ -192,8 +215,8 @@ public class CommandeService {
         double total = 0.0;
         
         for (ProduitCommandeDTO produitDTO : produits) {
-            Produit produit = findProduitById(produitDTO.produitId());
-            int quantite = produitDTO.quantite();
+            Produit produit = findProduitById(produitDTO.getProduitId());
+            int quantite = produitDTO.getQuantite();
             
             // Vérifier et réduire le stock
             verifierEtReduireStock(produit, quantite);
@@ -290,10 +313,18 @@ public class CommandeService {
         int commandeId = commande.getIdCommande();
         
         switch (nouveauStatut) {
-            case DECLINEE -> notificationService.notifierCommandeRefusee(consommateurId, commandeId, motifRejet);
-            case VALIDEE -> notificationService.notifierCommandeValidee(consommateurId, commandeId);
-            case EN_LIVRAISON -> notificationService.notifierCommandeEnLivraison(consommateurId, commandeId);
-            case LIVREE -> notificationService.notifierCommandeLivree(consommateurId, commandeId);
+            case DECLINEE:
+                notificationService.notifierCommandeRefusee(consommateurId, commandeId, motifRejet);
+                break;
+            case VALIDEE:
+                notificationService.notifierCommandeValidee(consommateurId, commandeId);
+                break;
+            case EN_LIVRAISON:
+                notificationService.notifierCommandeEnLivraison(consommateurId, commandeId);
+                break;
+            case LIVREE:
+                notificationService.notifierCommandeLivree(consommateurId, commandeId);
+                break;
         }
     }
     
