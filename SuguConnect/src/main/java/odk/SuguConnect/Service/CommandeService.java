@@ -2,7 +2,7 @@ package odk.SuguConnect.Service;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import odk.SuguConnect.DTO.Request.PasserCommandePanierDTO;
+import odk.SuguConnect.DTO.Request.PasserCommandeRequestDTO;
 import odk.SuguConnect.DTO.Request.ProduitCommandeDTO;
 import odk.SuguConnect.DTO.Responses.HistoriqueVenteDTO;
 import odk.SuguConnect.Entity.*;
@@ -15,7 +15,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -26,32 +25,31 @@ public class CommandeService {
     private final ConsommateurRepository consommateurRepository;
     private final PaiementRepository paiementRepository;
     private final PanierRepository panierRepository;
-    private final PanierProduitRepository panierProduitRepository;
     private final NotificationService notificationService;
 
     @Transactional
-    public Commande passerCommande(int idConsommateur, PasserCommandePanierDTO request) {
+    public Commande passerCommande(int idConsommateur, ModePaiement modePaiement) {
         Consommateur consommateur = findConsommateurById(idConsommateur);
         Panier panier = validerPanier(consommateur);
         
-        // Create the order
-        Commande commande = creerCommande(consommateur, request.modePaiement());
+        // Créer la commande
+        Commande commande = creerCommande(consommateur, modePaiement);
         
-        // Process specified products from cart
-        double montantTotal = traiterProduitsSpecifiquesDuPanier(request.produits(), commande, panier);
+        // Traiter les produits du panier
+        double montantTotal = traiterProduitsPanier(panier, commande);
         commande.setMontantTotal(montantTotal);
         commandeRepository.save(commande);
         
-        // Create payment
-        Paiement paiement = creerPaiement(commande, request.modePaiement(), montantTotal);
+        // Créer le paiement
+        Paiement paiement = creerPaiement(commande, modePaiement, montantTotal);
         commande.setPaiement(paiement);
         commandeRepository.save(commande);
         
-        // Send notifications
+        // Envoyer les notifications
         envoyerNotificationsCommande(consommateur.getId(), commande, montantTotal);
         
-        // Remove ordered products from cart
-        retirerProduitsDuPanier(panier, request.produits());
+        // Vider le panier
+        viderPanier(panier);
         
         return commande;
     }
@@ -60,27 +58,27 @@ public class CommandeService {
      * Passer une commande avec des produits spécifiques (sans utiliser le panier)
      * Permet au consommateur de choisir directement les produits à commander
      */
-    public List<Commande> getCommandesParProducteur(int producteurId) {
-        // Récupérer toutes les commandes contenant au moins un produit du producteur
-        return commandeRepository.findAll().stream()
-                .filter(cmd -> cmd.getCommandeProduits().stream()
-                        .anyMatch(cp -> cp.getProduit().getProducteur().getId() == producteurId))
-                .toList();
-    }
-    
-    /**
-     * Récupère toutes les commandes pour un producteur spécifique avec des filtres optionnels
-     */
-    public List<Commande> getCommandesParProducteur(int producteurId, StatutCommande statut) {
-        return commandeRepository.findAll().stream()
-                .filter(cmd -> cmd.getCommandeProduits().stream()
-                        .anyMatch(cp -> cp.getProduit().getProducteur().getId() == producteurId))
-                .filter(cmd -> statut == null || cmd.getStatutCommande() == statut)
-                .toList();
-    }
-    
-    public int countCommandesParConsommateur(Long consommateurId) {
-        return commandeRepository.countByConsommateurId(consommateurId); // méthode JPA
+    @Transactional
+    public Commande passerCommandeAvecProduits(int idConsommateur, PasserCommandeRequestDTO request) {
+        Consommateur consommateur = findConsommateurById(idConsommateur);
+        
+        // Créer la commande
+        Commande commande = creerCommande(consommateur, request.getModePaiement());
+        
+        // Traiter les produits spécifiés
+        double montantTotal = traiterProduitsSpecifiques(request.getProduits(), commande);
+        commande.setMontantTotal(montantTotal);
+        commandeRepository.save(commande);
+        
+        // Créer le paiement
+        Paiement paiement = creerPaiement(commande, request.getModePaiement(), montantTotal);
+        commande.setPaiement(paiement);
+        commandeRepository.save(commande);
+        
+        // Envoyer les notifications
+        envoyerNotificationsCommande(consommateur.getId(), commande, montantTotal);
+        
+        return commande;
     }
     public List<Commande> voirCommandesParConsommateur(int idConsommateur) {
         Consommateur consommateur = findConsommateurById(idConsommateur);
@@ -99,20 +97,30 @@ public class CommandeService {
     public List<Commande> voirToutesLesCommandes() {
         return commandeRepository.findAll();
     }
-    public List<HistoriqueVenteDTO> getHistoriqueVentesProduit(int produitId) {
-        return commandeRepository.findAll().stream()
-                .flatMap(commande -> commande.getCommandeProduits().stream()
-                        .filter(cp -> cp.getProduit().getId() == produitId)
-                        .map(cp -> {
-                            HistoriqueVenteDTO dto = new HistoriqueVenteDTO();
-                            dto.setNomConsommateur(commande.getConsommateur().getPrenom() + " " + commande.getConsommateur().getNom());
-                            dto.setQuantite(cp.getQuantite());
-                            dto.setMontant(cp.getPrixUnitaire() * cp.getQuantite());
-                            dto.setDateCommande(commande.getDateCommande());
-                            return dto;
-                        }))
+    
+    public List<Commande> voirCommandesParProducteur(int producteurId, StatutCommande statut, String search) {
+        List<Commande> commandes;
+        
+        // Filtrer par producteur et optionnellement par statut
+        if (statut != null) {
+            commandes = commandeRepository.findByProducteurIdAndStatut(producteurId, statut);
+        } else {
+            commandes = commandeRepository.findByProducteurId(producteurId);
+        }
+        
+        // Filtrer par recherche si nécessaire
+        if (search != null && !search.trim().isEmpty()) {
+            String searchLower = search.toLowerCase();
+            commandes = commandes.stream()
+                .filter(c -> c.getIdCommande() != 0 && String.valueOf(c.getIdCommande()).contains(searchLower)
+                          || c.getConsommateur().getNom().toLowerCase().contains(searchLower)
+                          || c.getConsommateur().getPrenom().toLowerCase().contains(searchLower))
                 .toList();
+        }
+        
+        return commandes;
     }
+    
     @Transactional
     public Commande changerStatutCommande(int commandeId, int producteurId, StatutCommande nouveauStatut, String motifRejet) {
         Commande commande = findCommandeById(commandeId);
@@ -166,10 +174,7 @@ public class CommandeService {
     
     private Panier validerPanier(Consommateur consommateur) {
         Panier panier = consommateur.getPanier();
-        if (panier == null) {
-            throw new EntityNotFoundException("Panier non trouvé. Veuillez d'abord créer un panier.");
-        }
-        if (panier.getPanierProduits() == null || panier.getPanierProduits().isEmpty()) {
+        if (panier == null || panier.getPanierProduits().isEmpty()) {
             throw new EntityNotFoundException("Panier vide. Veuillez d'abord ajouter des produits à votre panier.");
         }
         return panier;
@@ -182,60 +187,6 @@ public class CommandeService {
         commande.setModePaiement(modePaiement);
         commande.setStatutCommande(StatutCommande.EN_ATTENTE);
         return commande;
-    }
-
-    private double traiterProduitsSpecifiquesDuPanier(List<ProduitCommandeDTO> produits, Commande commande, Panier panier) {
-        double total = 0.0;
-        
-        // Validate input
-        if (produits == null || produits.isEmpty()) {
-            throw new IllegalArgumentException("La liste des produits à commander ne peut pas être vide");
-        }
-        
-        if (panier.getPanierProduits() == null || panier.getPanierProduits().isEmpty()) {
-            throw new EntityNotFoundException("Le panier est vide. Veuillez ajouter des produits avant de passer une commande.");
-        }
-        
-        for (ProduitCommandeDTO produitDTO : produits) {
-            // Validate product DTO
-            if (produitDTO == null) {
-                throw new IllegalArgumentException("Un des produits dans la liste est invalide");
-            }
-            
-            if (produitDTO.quantite() <= 0) {
-                throw new IllegalArgumentException(
-                    String.format("La quantité pour le produit ID %d doit être supérieure à zéro", produitDTO.produitId()));
-            }
-            
-            // Trouver le produit dans le panier
-            PanierProduit panierProduit = trouverProduitDansPanier(panier, produitDTO.produitId());
-            int quantite = produitDTO.quantite();
-            
-            // Vérifier que la quantité demandée est disponible dans le panier
-            if (quantite > panierProduit.getQuantite()) {
-                throw new IllegalArgumentException(
-                    String.format("Quantité demandée (%d) supérieure à la quantité dans le panier (%d) pour le produit %s",
-                        quantite, panierProduit.getQuantite(), 
-                        panierProduit.getProduit() != null ? panierProduit.getProduit().getNom() : "Inconnu")
-                );
-            }
-            
-            // Vérifier et réduire le stock
-            Produit produit = panierProduit.getProduit();
-            if (produit == null) {
-                throw new EntityNotFoundException("Produit introuvable dans le panier");
-            }
-            
-            verifierEtReduireStock(produit, quantite);
-            
-            // Créer l'article de commande
-            CommandeProduit commandeProduit = creerCommandeProduitDirect(commande, produit, quantite);
-            commande.getCommandeProduits().add(commandeProduit);
-            
-            total += produit.getPrixUnitaire() * quantite;
-        }
-        
-        return total;
     }
     
     private double traiterProduitsPanier(Panier panier, Commande commande) {
@@ -258,16 +209,34 @@ public class CommandeService {
         return total;
     }
     
-    private void verifierEtReduireStock(Produit produit, int quantite) {
-        if (produit == null) {
-            throw new EntityNotFoundException("Produit introuvable");
+    /**
+     * Traiter les produits spécifiés dans la requête de commande
+     */
+    private double traiterProduitsSpecifiques(List<ProduitCommandeDTO> produits, Commande commande) {
+        double total = 0.0;
+        
+        for (ProduitCommandeDTO produitDTO : produits) {
+            Produit produit = findProduitById(produitDTO.getProduitId());
+            int quantite = produitDTO.getQuantite();
+            
+            // Vérifier et réduire le stock
+            verifierEtReduireStock(produit, quantite);
+            
+            // Créer l'article de commande
+            CommandeProduit commandeProduit = creerCommandeProduitDirect(commande, produit, quantite);
+            commande.getCommandeProduits().add(commandeProduit);
+            
+            total += produit.getPrixUnitaire() * quantite;
         }
         
+        return total;
+    }
+    
+    private void verifierEtReduireStock(Produit produit, int quantite) {
         if (produit.getStockDisponible() < quantite) {
             throw new IllegalArgumentException(
                 String.format("Stock insuffisant pour %s. Disponible: %d, Demandé: %d",
-                    produit.getNom() != null ? produit.getNom() : "Produit inconnu", 
-                    produit.getStockDisponible(), quantite)
+                    produit.getNom(), produit.getStockDisponible(), quantite)
             );
         }
         produit.setStockDisponible(produit.getStockDisponible() - quantite);
@@ -295,18 +264,6 @@ public class CommandeService {
     private Produit findProduitById(int id) {
         return produitRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Produit introuvable avec ID: " + id));
-    }
-    
-    private PanierProduit trouverProduitDansPanier(Panier panier, int produitId) {
-        if (panier.getPanierProduits() == null || panier.getPanierProduits().isEmpty()) {
-            throw new EntityNotFoundException("Aucun produit trouvé dans le panier");
-        }
-        
-        return panier.getPanierProduits().stream()
-                .filter(pp -> pp.getProduit() != null && pp.getProduit().getId() == produitId)
-                .findFirst()
-                .orElseThrow(() -> new EntityNotFoundException(
-                    String.format("Produit avec ID %d introuvable dans le panier. Veuillez vérifier que le produit est bien ajouté au panier.", produitId)));
     }
     
     private Paiement creerPaiement(Commande commande, ModePaiement modePaiement, double montant) {
@@ -341,23 +298,6 @@ public class CommandeService {
         panierRepository.save(panier);
     }
     
-    private void retirerProduitsDuPanier(Panier panier, List<ProduitCommandeDTO> produits) {
-        for (ProduitCommandeDTO produitDTO : produits) {
-            PanierProduit panierProduit = trouverProduitDansPanier(panier, produitDTO.produitId());
-            int quantiteRestante = panierProduit.getQuantite() - produitDTO.quantite();
-            
-            if (quantiteRestante <= 0) {
-                panier.getPanierProduits().remove(panierProduit);
-                panierProduitRepository.delete(panierProduit);
-                panier.getProduits().removeIf(p -> p.getId() == produitDTO.produitId());
-            } else {
-                panierProduit.setQuantite(quantiteRestante);
-                panierProduitRepository.save(panierProduit);
-            }
-        }
-        panierRepository.save(panier);
-    }
-    
     private Producteur getProducteurCommande(Commande commande) {
         return commande.getCommandeProduits().get(0).getProduit().getProducteur();
     }
@@ -374,10 +314,18 @@ public class CommandeService {
         int commandeId = commande.getIdCommande();
         
         switch (nouveauStatut) {
-            case DECLINEE -> notificationService.notifierCommandeRefusee(consommateurId, commandeId, motifRejet);
-            case VALIDEE -> notificationService.notifierCommandeValidee(consommateurId, commandeId);
-            case EN_LIVRAISON -> notificationService.notifierCommandeEnLivraison(consommateurId, commandeId);
-            case LIVREE -> notificationService.notifierCommandeLivree(consommateurId, commandeId);
+            case DECLINEE:
+                notificationService.notifierCommandeRefusee(consommateurId, commandeId, motifRejet);
+                break;
+            case VALIDEE:
+                notificationService.notifierCommandeValidee(consommateurId, commandeId);
+                break;
+            case EN_LIVRAISON:
+                notificationService.notifierCommandeEnLivraison(consommateurId, commandeId);
+                break;
+            case LIVREE:
+                notificationService.notifierCommandeLivree(consommateurId, commandeId);
+                break;
         }
     }
     
@@ -397,5 +345,20 @@ public class CommandeService {
         if (commande.isReceptionValidee()) {
             throw new IllegalStateException("Cette commande a déjà été validée");
         }
+    }
+
+    public List<HistoriqueVenteDTO> getHistoriqueVentesProduit(int produitId) {
+        return commandeRepository.findAll().stream()
+                .flatMap(commande -> commande.getCommandeProduits().stream()
+                        .filter(cp -> cp.getProduit().getId() == produitId)
+                        .map(cp -> {
+                            HistoriqueVenteDTO dto = new HistoriqueVenteDTO();
+                            dto.setNomConsommateur(commande.getConsommateur().getPrenom() + " " + commande.getConsommateur().getNom());
+                            dto.setQuantite(cp.getQuantite());
+                            dto.setMontant(cp.getPrixUnitaire() * cp.getQuantite());
+                            dto.setDateCommande(commande.getDateCommande());
+                            return dto;
+                        }))
+                .toList();
     }
 }

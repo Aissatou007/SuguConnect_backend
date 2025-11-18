@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import odk.SuguConnect.Security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -18,11 +17,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
-import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -36,53 +30,125 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // Active le support CORS avec ta configuration personnalisée
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                // Désactive CSRF (obligatoire avec JWT)
                 .csrf(csrf -> csrf.disable())
-                // Définis les autorisations
                 .authorizeHttpRequests(auth -> auth
+                        // ============================================
+                        // ENDPOINTS PUBLICS (Pas d'authentification)
+                        // ============================================
+                        
+                        // Swagger/OpenAPI Documentation
                         .requestMatchers(
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
-                                "/swagger-ui.html",
-                                "/auth/**",
-                                "/consommateur/inscription",
-                                "/producteur/inscription",
-                                "/producteur/producteurs",
-                                "/files/download/**"
+                                "/swagger-ui.html"
                         ).permitAll()
-                        .requestMatchers(HttpMethod.GET,
-                                "/consommateur/produits",
-                                "/categorie/**",
+                        
+                        // Authentification (Login/Validation)
+                        .requestMatchers("/auth/**").permitAll()
+                        
+                        // Inscriptions (Consommateur et Producteur)
+                        .requestMatchers(
+                                "/consommateur/inscription",
+                                "/producteur/inscription"
+                        ).permitAll()
+                        
+                        // Consultation publique - Liste des producteurs
+                        .requestMatchers(
+                                "/producteur/producteurs",         // Liste des producteurs
+                                "/files/download/**",              // Téléchargement de fichiers (images, etc.)
+                                "/uploads/**"                      // Accès direct aux fichiers uploadés
+                        ).permitAll()
+                        
+                        // Consultation publique - Produits disponibles (GET uniquement)
+                        .requestMatchers(
+                                org.springframework.http.HttpMethod.GET,
+                                "/consommateur/produits",          // Voir les produits disponibles
+                                "/api/produits/populaires",        // Produits populaires
+                                "/api/produits/populaires/**",      // Tous les endpoints produits populaires
+                                "/api/mobile/**"                   // Tous les endpoints mobiles
+                        ).permitAll()
+                        
+                        // Catégories publiques (GET uniquement)
+                        .requestMatchers(
+                                org.springframework.http.HttpMethod.GET,
+                                "/categorie",
+                                "/categorie/{id}",
+                                "/categorie/{id}/produits"
+                        ).permitAll()
+                        
+                        // Producteur public (GET uniquement)
+                        .requestMatchers(
+                                org.springframework.http.HttpMethod.GET,
                                 "/producteur/{id}"
                         ).permitAll()
+                        
+                        // ============================================
+                        // ENDPOINTS PRODUCTEUR - Spécifiques (doivent être avant /**)
+                        // ============================================
+                        .requestMatchers(
+                                org.springframework.http.HttpMethod.GET,
+                                "/producteur/{producteurId}/commandes"
+                        ).hasAnyRole("PRODUCTEUR", "ADMIN")
+                        
+                        // ============================================
+                        // ENDPOINTS FICHIERS (Upload/Delete nécessite authentification)
+                        // ============================================
+                        .requestMatchers("/files/upload", "/files/upload-multiple").authenticated()
+                        .requestMatchers("/files/delete/**").authenticated()
+                        .requestMatchers("/files/product/*/upload-photos").authenticated()
+                        
+                        // ============================================
+                        // ENDPOINTS ADMIN (Role ADMIN uniquement)
+                        // ============================================
                         .requestMatchers("/admin/**").hasRole("ADMIN")
+                        
+                        // Catégories - Création, Modification, Suppression (ADMIN uniquement)
+                        .requestMatchers(
+                                org.springframework.http.HttpMethod.POST,
+                                "/categorie"
+                        ).hasRole("ADMIN")
+                        .requestMatchers(
+                                org.springframework.http.HttpMethod.PUT,
+                                "/categorie/{id}"
+                        ).hasRole("ADMIN")
+                        .requestMatchers(
+                                org.springframework.http.HttpMethod.DELETE,
+                                "/categorie/{id}"
+                        ).hasRole("ADMIN")
+                        
+                        // ============================================
+                        // ENDPOINTS PRODUCTEUR (PRODUCTEUR ou ADMIN)
+                        // ============================================
                         .requestMatchers("/producteur/**").hasAnyRole("PRODUCTEUR", "ADMIN")
+                        
+                        // ============================================
+                        // ENDPOINTS CONSOMMATEUR (CONSOMMATEUR ou ADMIN)
+                        // ============================================
                         .requestMatchers("/consommateur/**").hasAnyRole("CONSOMMATEUR", "ADMIN")
+                        
+                        // ============================================
+                        // ENDPOINTS PAIEMENT (CONSOMMATEUR ou ADMIN)
+                        // ============================================
+                        .requestMatchers("/paiement/**").hasAnyRole("CONSOMMATEUR", "ADMIN")
+                        
+                        // ============================================
+                        // ENDPOINTS NOTIFICATIONS (Utilisateurs authentifiés)
+                        // ============================================
+                        .requestMatchers("/notifications/**").authenticated()
+                        
+                        // Toute autre requête nécessite une authentification
                         .anyRequest().authenticated()
                 )
-                // Session sans état (JWT)
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                // Auth provider + filtre JWT
+                // Gestion de session stateless (JWT)
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+                // Ajouter le fournisseur d'authentification
                 .authenticationProvider(authenticationProvider())
+                // Ajouter le filtre JWT avant le filtre d'authentification standard
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
-
+        
         return http.build();
-    }
-
-    // ✅ Configuration CORS incluse ici
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:4200")); // Autorise ton front Angular
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("*"));
-        configuration.setAllowCredentials(true);
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-        return source;
     }
 
     @Bean
@@ -90,6 +156,10 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+    /**
+     * Fournisseur d'authentification personnalisé
+     * Utilise le UserDetailsService et le PasswordEncoder
+     */
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
@@ -98,6 +168,10 @@ public class SecurityConfig {
         return authProvider;
     }
 
+    /**
+     * Gestionnaire d'authentification
+     * Nécessaire pour l'authentification manuelle dans les services
+     */
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();

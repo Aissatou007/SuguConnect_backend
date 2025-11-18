@@ -31,19 +31,19 @@ public class AuthService {
 
     public AuthResponse login(LoginRequest loginRequest) {
         // Chercher dans chaque repository spécifique (Admin, Producteur, Consommateur)
-        Admin admin = adminRepository.findByTelephone(loginRequest.telephone());
+        Admin admin = adminRepository.findByTelephone(loginRequest.getTelephone());
         if (admin != null) {
-            return authenticateAdmin(admin, loginRequest.motDePasse());
+            return authenticateAdmin(admin, loginRequest.getMotDePasse());
         }
         
-        Producteur producteur = producteurRepository.findByTelephone(loginRequest.telephone());
+        Producteur producteur = producteurRepository.findByTelephone(loginRequest.getTelephone());
         if (producteur != null) {
-            return authenticateProducteur(producteur, loginRequest.motDePasse());
+            return authenticateProducteur(producteur, loginRequest.getMotDePasse());
         }
         
-        Consommateur consommateur = consommateurRepository.findByTelephone(loginRequest.telephone());
+        Consommateur consommateur = consommateurRepository.findByTelephone(loginRequest.getTelephone());
         if (consommateur != null) {
-            return authenticateConsommateur(consommateur, loginRequest.motDePasse());
+            return authenticateConsommateur(consommateur, loginRequest.getMotDePasse());
         }
         throw new EntityNotFoundException("Aucun compte trouvé avec ce numéro de téléphone");
     }
@@ -147,13 +147,13 @@ public class AuthService {
     
     // Connexion spécifique pour Admin
     public AuthResponse loginAdmin(LoginRequest loginRequest) {
-        Admin admin = adminRepository.findByTelephone(loginRequest.telephone());
+        Admin admin = adminRepository.findByTelephone(loginRequest.getTelephone());
         
         if (admin == null) {
             throw new EntityNotFoundException("Compte administrateur non trouvé");
         }
         
-        if (!passwordEncoder.matches(loginRequest.motDePasse(), admin.getMotDePasse())) {
+        if (!passwordEncoder.matches(loginRequest.getMotDePasse(), admin.getMotDePasse())) {
             throw new IllegalArgumentException("Mot de passe incorrect");
         }
         
@@ -178,13 +178,13 @@ public class AuthService {
     
     // Connexion spécifique pour Producteur
     public AuthResponse loginProducteur(LoginRequest loginRequest) {
-        Producteur producteur = producteurRepository.findByTelephone(loginRequest.telephone());
+        Producteur producteur = producteurRepository.findByTelephone(loginRequest.getTelephone());
         
         if (producteur == null) {
             throw new EntityNotFoundException("Compte producteur non trouvé");
         }
         
-        if (!passwordEncoder.matches(loginRequest.motDePasse(), producteur.getMotDePasse())) {
+        if (!passwordEncoder.matches(loginRequest.getMotDePasse(), producteur.getMotDePasse())) {
             throw new IllegalArgumentException("Mot de passe incorrect");
         }
         
@@ -219,13 +219,13 @@ public class AuthService {
     //Connexion spécifique pour Consommateur
 
     public AuthResponse loginConsommateur(LoginRequest loginRequest) {
-        Consommateur consommateur = consommateurRepository.findByTelephone(loginRequest.telephone());
+        Consommateur consommateur = consommateurRepository.findByTelephone(loginRequest.getTelephone());
         
         if (consommateur == null) {
             throw new EntityNotFoundException("Compte consommateur non trouvé");
         }
         
-        if (!passwordEncoder.matches(loginRequest.motDePasse(), consommateur.getMotDePasse())) {
+        if (!passwordEncoder.matches(loginRequest.getMotDePasse(), consommateur.getMotDePasse())) {
             throw new IllegalArgumentException("Mot de passe incorrect");
         }
         

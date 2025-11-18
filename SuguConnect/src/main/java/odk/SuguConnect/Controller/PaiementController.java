@@ -6,9 +6,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import odk.SuguConnect.Entity.Consommateur;
 import odk.SuguConnect.Entity.Paiement;
+import odk.SuguConnect.Enums.ModePaiement;
+import odk.SuguConnect.Service.ConsommateurService;
 import odk.SuguConnect.Service.PaiementService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,6 +28,75 @@ import java.util.Map;
 @Tag(name = "Paiement", description = "API de gestion des paiements - Orange Money, Wave, Espèces")
 public class PaiementController {
     private final PaiementService paiementService;
+    private final ConsommateurService consommateurService;
+    
+    @GetMapping(path = "/test")
+    public ResponseEntity<String> testEndpoint() {
+        System.out.println("=== Test endpoint atteint ===");
+        return ResponseEntity.ok("Test endpoint fonctionnel");
+    }
+    
+    @PostMapping
+    @Operation(
+            summary = "Créer un paiement",
+            description = "Créer un nouveau paiement"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Paiement créé avec succès"),
+            @ApiResponse(responseCode = "400", description = "Données de paiement invalides"),
+            @ApiResponse(responseCode = "403", description = "Non autorisé"),
+            @ApiResponse(responseCode = "404", description = "Commande non trouvée")
+    })
+    public ResponseEntity<Paiement> creerPaiement(
+            @Parameter(description = "Données du paiement", required = true)
+            @RequestBody Map<String, Object> paiementData,
+            Authentication authentication) {
+        
+        System.out.println("=== Requête de création de paiement reçue ===");
+        System.out.println("Données de paiement: " + paiementData);
+        System.out.println("Authentication: " + authentication);
+        System.out.println("Principal: " + authentication.getPrincipal());
+        System.out.println("Authorities: " + authentication.getAuthorities());
+        
+        try {
+            // Extraire les données du paiement
+            int commandeId = (int) paiementData.get("commandeId");
+            String methodePaiement = (String) paiementData.get("methodePaiement");
+            double montant = ((Number) paiementData.get("montant")).doubleValue();
+            String numeroTelephone = (String) paiementData.getOrDefault("numeroTelephone", null);
+            
+            System.out.println("Commande ID: " + commandeId);
+            System.out.println("Méthode de paiement: " + methodePaiement);
+            System.out.println("Montant: " + montant);
+            System.out.println("Numéro de téléphone: " + numeroTelephone);
+            
+            // Extraire l'ID du consommateur depuis l'authentification
+            String telephone = authentication.getName();
+            System.out.println("Téléphone de l'utilisateur authentifié: " + telephone);
+            
+            Consommateur consommateur = consommateurService.findByTelephone(telephone);
+            System.out.println("Consommateur trouvé: " + consommateur);
+            int consommateurId = consommateur.getId();
+            
+            System.out.println("Consommateur ID: " + consommateurId);
+            
+            // Créer le paiement via le service
+            Paiement paiement = paiementService.creerPaiement(
+                commandeId, 
+                ModePaiement.valueOf(methodePaiement), 
+                montant, 
+                numeroTelephone,
+                consommateurId
+            );
+            
+            System.out.println("Paiement créé avec succès");
+            return ResponseEntity.status(201).body(paiement);
+        } catch (Exception e) {
+            System.out.println("ERREUR lors de la création du paiement: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.badRequest().build();
+        }
+    }
     
     @GetMapping
     @Operation(

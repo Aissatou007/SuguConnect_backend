@@ -7,13 +7,13 @@ import odk.SuguConnect.Entity.Livreur;
 public class LivreurMapper {
     
     public static Livreur toEntity(LivreurRequestDTO dto, Livreur livreur) {
-        livreur.setNom(dto.nom());
-        livreur.setPrenom(dto.prenom());
-        livreur.setTelephone(dto.telephone());
-        livreur.setEmail(dto.email());
-        livreur.setLocalisation(dto.localisation());
-        livreur.setMatricule(dto.matricule());
-        livreur.setVehicule(dto.vehicule());
+        livreur.setNom(dto.getNom());
+        livreur.setPrenom(dto.getPrenom());
+        livreur.setTelephone(dto.getTelephone());
+        livreur.setEmail(dto.getEmail());
+        livreur.setLocalisation(dto.getLocalisation());
+        livreur.setMatricule(dto.getMatricule());
+        livreur.setVehicule(dto.getVehicule());
         return livreur;
     }
     

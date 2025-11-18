@@ -5,10 +5,8 @@ import lombok.RequiredArgsConstructor;
 import odk.SuguConnect.DTO.Request.ConsommateurRequestDTO;
 import odk.SuguConnect.DTO.Responses.ConsommateurResponseDTO;
 import odk.SuguConnect.Entity.Consommateur;
-import odk.SuguConnect.Entity.Panier;
 import odk.SuguConnect.Entity.Produit;
 import odk.SuguConnect.Enums.Role;
-import odk.SuguConnect.Mapper.ConsommateurMapper;
 import odk.SuguConnect.Repository.ConsommateurRepository;
 import odk.SuguConnect.Repository.ProduitRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -16,7 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.List;
-
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -26,90 +24,95 @@ public class ConsommateurService {
     private final PasswordEncoder passwordEncoder;
 
     public String inscriptionConsommateur(ConsommateurRequestDTO dto, String telephone) {
-        verifierCompteNonExistant(telephone);
-        
-        Consommateur consommateur = creerConsommateur(dto);
-        Panier panier = creerPanierPourConsommateur(consommateur);
-        consommateur.setPanier(panier);
-        
+        if (consommateurRepository.findByTelephone(telephone) != null) {
+            throw new IllegalArgumentException("Ce numéro de téléphone est déjà utilisé");
+        }
+
+        Consommateur consommateur = new Consommateur();
+        consommateur.setNom(dto.getNom());
+        consommateur.setPrenom(dto.getPrenom());
+        consommateur.setTelephone(telephone);
+        consommateur.setEmail(dto.getEmail());
+        consommateur.setLocalisation(dto.getLocalisation());
+        consommateur.setLatitude(dto.getLatitude());
+        consommateur.setLongitude(dto.getLongitude());
+        consommateur.setMotDePasse(passwordEncoder.encode(dto.getMotDePasse()));
+        consommateur.setRole(Role.CONSOMMATEUR);
+        consommateur.setDateInscription(LocalDate.now());
+        consommateur.setActif(true);
+
         consommateurRepository.save(consommateur);
-        return "Soyez le bienvenue ";
+        return "Inscription réussie";
     }
 
     public List<ConsommateurResponseDTO> recupererLesConsommateurs() {
-        return consommateurRepository.findAll().stream()
-                .map(ConsommateurMapper::toResponse)
-                .toList();
+        List<Consommateur> consommateurs = consommateurRepository.findAll();
+        return consommateurs.stream()
+                .map(this::toResponseDTO)
+                .collect(Collectors.toList());
     }
-    
 
     public ConsommateurResponseDTO recupererUnConsommateur(int id) {
-        Consommateur consommateur = findConsommateurById(id);
-        return ConsommateurMapper.toResponse(consommateur);
+        Consommateur consommateur = consommateurRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Consommateur non trouvé"));
+        return toResponseDTO(consommateur);
     }
-    
 
     public String modifierInformationConsommateur(ConsommateurRequestDTO dto, int id) {
-        Consommateur consommateur = findConsommateurById(id);
-        mettreAJourInformations(consommateur, dto);
+        Consommateur consommateur = consommateurRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Consommateur non trouvé"));
+
+        consommateur.setNom(dto.getNom());
+        consommateur.setPrenom(dto.getPrenom());
+        consommateur.setTelephone(dto.getTelephone());
+        consommateur.setEmail(dto.getEmail());
+        consommateur.setLocalisation(dto.getLocalisation());
+        consommateur.setLatitude(dto.getLatitude());
+        consommateur.setLongitude(dto.getLongitude());
+
         consommateurRepository.save(consommateur);
-        return "Vos informations ont été modifiées avec succès";
+        return "Informations mises à jour avec succès";
     }
-    
 
     public String supprimerConsommateur(int id) {
-        Consommateur consommateur = findConsommateurById(id);
+        Consommateur consommateur = consommateurRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Consommateur non trouvé"));
+
         consommateurRepository.delete(consommateur);
-        return "Le compte a été supprimé avec succès";
+        return "Compte supprimé avec succès";
     }
-    
 
     public List<Produit> voirTousLesProduitsDisponibles() {
         return produitRepository.findAllByStockDisponibleGreaterThan(0);
     }
 
     public List<Produit> filtrerProduitsDisponiblesParNom(String nom) {
-        List<Produit> produits = produitRepository.findByNomContainingIgnoreCase(nom);
-        return produits.stream()
-                .filter(produit -> produit.getStockDisponible() > 0)
-                .toList();
+        return produitRepository.findByNomContainingIgnoreCase(nom);
     }
 
-    private void verifierCompteNonExistant(String telephone) {
-        if (consommateurRepository.findByTelephone(telephone) != null) {
-            throw new IllegalArgumentException("Ce compte existe déjà");
-        }
+    public Consommateur getConsommateurById(int id) {
+        return consommateurRepository.findById(id).orElse(null);
     }
-    
-    private Consommateur creerConsommateur(ConsommateurRequestDTO dto) {
-        Consommateur consommateur = ConsommateurMapper.toEntity(dto, new Consommateur());
-        consommateur.setMotDePasse(passwordEncoder.encode(dto.motDePasse()));
-        consommateur.setRole(Role.CONSOMMATEUR);
-        consommateur.setDateInscription(LocalDate.now());
-        consommateur.setActif(true);
-        return consommateur;
-    }
-    
-    private Panier creerPanierPourConsommateur(Consommateur consommateur) {
-        Panier panier = new Panier();
-        panier.setConsommateur(consommateur);
-        return panier;
-    }
-    
-    private Consommateur findConsommateurById(int id) {
-        return consommateurRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Ce consommateur n'a pas de compte"));
-    }
-    
-    private void mettreAJourInformations(Consommateur consommateur, ConsommateurRequestDTO dto) {
-        consommateur.setNom(dto.nom());
-        consommateur.setPrenom(dto.prenom());
-        consommateur.setTelephone(dto.telephone());
-        consommateur.setEmail(dto.email());
-        consommateur.setLocalisation(dto.localisation());
 
-        if (dto.motDePasse() != null && !dto.motDePasse().isEmpty()) {
-            consommateur.setMotDePasse(passwordEncoder.encode(dto.motDePasse()));
+    public Consommateur findByTelephone(String telephone) {
+        return consommateurRepository.findByTelephone(telephone);
+    }
+
+    private ConsommateurResponseDTO toResponseDTO(Consommateur consommateur) {
+        ConsommateurResponseDTO dto = new ConsommateurResponseDTO();
+        dto.setId(consommateur.getId());
+        dto.setNom(consommateur.getNom());
+        dto.setPrenom(consommateur.getPrenom());
+        dto.setTelephone(consommateur.getTelephone());
+        dto.setEmail(consommateur.getEmail());
+        dto.setLocalisation(consommateur.getLocalisation());
+        dto.setLatitude(consommateur.getLatitude());
+        dto.setLongitude(consommateur.getLongitude());
+        dto.setRole(consommateur.getRole());
+        dto.setDateInscription(consommateur.getDateInscription());
+        if (consommateur.getPanier() != null) {
+            dto.setPanierId(consommateur.getPanier().getId());
         }
+        return dto;
     }
 }

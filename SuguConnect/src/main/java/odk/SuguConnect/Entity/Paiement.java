@@ -10,6 +10,7 @@ import odk.SuguConnect.Enums.ModePaiement;
 import odk.SuguConnect.Enums.StatutPaiement;
 
 import java.time.LocalDate;
+
 @Entity
 @Getter
 @Setter
@@ -18,16 +19,27 @@ import java.time.LocalDate;
 public class Paiement {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int idPaiement ;
-    private double montant ;
+    private int idPaiement;
+    
+    private double montant;
+    
     private LocalDate datePaiement;
+    
     @Enumerated(EnumType.STRING)
-    private ModePaiement methodePaiement ;
-    private StatutPaiement statutPaiement ;
+    private ModePaiement methodePaiement;
+    
+    @Enumerated(EnumType.ORDINAL)
+    private StatutPaiement statutPaiement;
+    
+    private String referenceTransaction;
+    
+    private String numeroTelephone;
+    
     @ManyToOne
     @JoinColumn(name = "consommateur")
-    private Consommateur consommateur ;
+    private Consommateur consommateur;
+    
     @OneToOne(mappedBy = "paiement")
     @JsonIgnore
-    private Commande commande ;
+    private Commande commande;
 }

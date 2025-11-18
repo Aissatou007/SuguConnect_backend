@@ -56,10 +56,7 @@ public class CommandeMapper {
         return new ProduitSimpleDTO(
                 produit.getId(),
                 produit.getNom(),
-                produit.getPrixUnitaire(),
-                produit.getProducteur() != null ? produit.getProducteur().getId() : null,
-                produit.getProducteur() != null ? produit.getProducteur().getNom() : "Inconnu",
-                produit.getProducteur() != null ? produit.getProducteur().getPrenom() : "Inconnu"
+                produit.getPrixUnitaire()
         );
     }
     

@@ -44,10 +44,11 @@ public class FileUploadController {
             @Parameter(description = "Fichier à uploader", required = true)
             @RequestParam("file") MultipartFile file) {
         
-        String fileName = fileStorageService.storeFile(file);
+        // Stocker le fichier avec génération de vignette (300x300 par défaut)
+        String fileName = fileStorageService.storeFileWithThumbnail(file, 300, 300);
 
         String fileDownloadUri = ServletUriComponentsBuilder.fromCurrentContextPath()
-                .path("/suguconnect/files/download/")
+                .path("/uploads/")
                 .path(fileName)
                 .toUriString();
 
@@ -77,10 +78,11 @@ public class FileUploadController {
 
         for (MultipartFile file : files) {
             if (!file.isEmpty()) {
-                String fileName = fileStorageService.storeFile(file);
+                // Stocker le fichier avec génération de vignette (300x300 par défaut)
+                String fileName = fileStorageService.storeFileWithThumbnail(file, 300, 300);
 
                 String fileDownloadUri = ServletUriComponentsBuilder.fromCurrentContextPath()
-                        .path("/suguconnect/files/download/")
+                        .path("/uploads/")
                         .path(fileName)
                         .toUriString();
 
@@ -171,10 +173,11 @@ public class FileUploadController {
 
         for (MultipartFile photo : photos) {
             if (!photo.isEmpty()) {
-                String fileName = fileStorageService.storeFile(photo);
+                // Stocker le fichier avec génération de vignette (150x150 pour les vignettes de produits)
+                String fileName = fileStorageService.storeFileWithThumbnail(photo, 150, 150);
                 
                 String fileDownloadUri = ServletUriComponentsBuilder.fromCurrentContextPath()
-                        .path("/suguconnect/files/download/")
+                        .path("/uploads/")
                         .path(fileName)
                         .toUriString();
                 

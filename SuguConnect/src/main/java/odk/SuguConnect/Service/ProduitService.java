@@ -1,201 +1,78 @@
 package odk.SuguConnect.Service;
 
 import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
 import odk.SuguConnect.Entity.Categorie;
-import odk.SuguConnect.Entity.Producteur;
 import odk.SuguConnect.Entity.Produit;
-import odk.SuguConnect.Enums.StatutProducteur;
+import odk.SuguConnect.Entity.Producteur;
 import odk.SuguConnect.Repository.CategorieRepository;
-import odk.SuguConnect.Repository.ProducteurRepository;
 import odk.SuguConnect.Repository.ProduitRepository;
-import odk.SuguConnect.DTO.Responses.ProduitsParCategorieDTO;
-import odk.SuguConnect.DTO.Responses.ProduitSimpleDTO;
+import odk.SuguConnect.Repository.ProducteurRepository;
 import org.springframework.stereotype.Service;
 
-import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Pattern;
 
 @Service
+@RequiredArgsConstructor
 public class ProduitService {
-    private final ProduitRepository produitRepository ;
-    private final ProducteurRepository producteurRepository ;
+    private final ProduitRepository produitRepository;
+    private final ProducteurRepository producteurRepository;
     private final CategorieRepository categorieRepository;
-
-    // Liste noire : produits interdits
-    private final List<String> produitsInterdits = Arrays.asList(
-            "téléphone", "telephone", "voiture", "ordinateur", "pc",
-            "tv", "télé", "chaussure", "vetement", "parfum", "montre", "casque",
-            "laptop", "smartphone", "vélo", "bicyclette", "bijoux", "lunettes",
-            "sac", "portable", "tablette", "console", "jeux", "vêtements",
-            "cosmétiques", "maquillage", "jouet", "toys", "meubles", "furniture",
-            "électroménager", "appareil", "machine", "outil", "tools",
-            "médicament", "medicine", "pharmacie", "drug", "book", "livre",
-            "magazine", "journal", "cd", "dvd", "film", "music", "musique",
-            "instrument", "musical", "sport", "fitness", "gym", "beauté", "beauty"
-    );
-
-    public ProduitService(ProduitRepository produitRepository, 
-                         ProducteurRepository producteurRepository,
-                         CategorieRepository categorieRepository) {
-        this.produitRepository = produitRepository;
-        this.producteurRepository = producteurRepository;
-        this.categorieRepository = categorieRepository;
+    
+    private static final Pattern NOM_PRODUIT_PATTERN = Pattern.compile("^[a-zA-Z0-9À-ÿ\\s.'-]{3,50}$");
+    
+    // ========== Méthodes privées de validation ==========
+    
+    private void validerNomProduit(String nom) {
+        if (nom == null || nom.trim().isEmpty()) {
+            throw new IllegalArgumentException("Le nom du produit ne peut pas être vide");
+        }
+        if (!NOM_PRODUIT_PATTERN.matcher(nom.trim()).matches()) {
+            throw new IllegalArgumentException("Le nom du produit doit contenir entre 3 et 50 caractères alphanumériques");
+        }
     }
-
+    
+    private void validerPrix(float prix) {
+        if (prix <= 0) {
+            throw new IllegalArgumentException("Le prix doit être supérieur à zéro");
+        }
+    }
+    
+    private void validerQuantite(int quantite) {
+        if (quantite < 0) {
+            throw new IllegalArgumentException("La quantité ne peut pas être négative");
+        }
+    }
+    
+    // ========== Méthodes producteur ==========
+    
     public Produit ajouterProduit(Produit produit, int producteurId) {
-        // Validation des champs obligatoires
-        if (produit.getNom() == null || produit.getNom().trim().isEmpty()) {
-            throw new IllegalArgumentException("Le nom du produit est obligatoire");
-        }
-        
-        if (produit.getDescription() == null || produit.getDescription().trim().isEmpty()) {
-            throw new IllegalArgumentException("La description du produit est obligatoire");
-        }
-        
-        if (produit.getPrixUnitaire() <= 0) {
-            throw new IllegalArgumentException("Le prix unitaire doit être supérieur à zéro");
-        }
-        
-        if (produit.getQuantite() <= 0) {
-            throw new IllegalArgumentException("La quantité doit être supérieure à zéro");
-        }
-        
-        if (produit.getUnite() == null) {
-            throw new IllegalArgumentException("L'unité de mesure est obligatoire");
-        }
-        
-        if (produit.getCategorie() == null || produit.getCategorie().getId() <= 0) {
-            throw new IllegalArgumentException("La catégorie est obligatoire");
-        }
-        
-        // Validation du champ estBio (obligatoire)
-        // Note: No need to validate estBio as it's a boolean with a default value in the entity
+        // Validation des données
+        validerNomProduit(produit.getNom());
+        validerPrix(produit.getPrixUnitaire());
+        validerQuantite(produit.getQuantite());
         
         if (produit.getPhotos() == null || produit.getPhotos().isEmpty()) {
-            throw new IllegalArgumentException("Au moins une photo est requise");
+            throw new IllegalArgumentException("Le produit doit contenir au moins une photo");
+        }
+        if(produit.getPhotos().size() > 4){
+            throw new IllegalArgumentException("Le produit ne peut pas avoir plus de 4 photos");
         }
         
-        if (produit.getPhotos().size() > 4) {
-            throw new IllegalArgumentException("Maximum 4 photos autorisées");
+        // Vérifier et associer la catégorie si fournie
+        if(produit.getCategorie() != null && produit.getCategorie().getId() > 0) {
+            Categorie categorie = categorieRepository.findById(produit.getCategorie().getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Cette catégorie n'existe pas"));
+            produit.setCategorie(categorie);
         }
         
-        // Validation du nom du produit
-        validerNomProduit(produit.getNom());
-        
-        // Associer le producteur
         Producteur producteur = producteurRepository.findById(producteurId)
-                .orElseThrow(() -> new EntityNotFoundException("Producteur introuvable"));
+                .orElseThrow(() -> new EntityNotFoundException("Ce producteur n'existe pas"));
         produit.setProducteur(producteur);
-        
-        // Associer la catégorie
-        Categorie categorie = categorieRepository.findById(produit.getCategorie().getId())
-                .orElseThrow(() -> new EntityNotFoundException("Catégorie introuvable"));
-        produit.setCategorie(categorie);
-        
-        // Initialiser le stock disponible
         produit.setStockDisponible(produit.getQuantite());
-        
-        return produitRepository.save(produit);
-    }
-    
-    /**
-     * Ajoute un produit avec un processus amélioré permettant de choisir d'abord la catégorie
-     * puis de sélectionner ou entrer le nom du produit
-     */
-    public Produit ajouterProduitAmeliore(Produit produit, int producteurId, int categorieId) {
-        // Validation des champs obligatoires
-        if (produit.getNom() == null || produit.getNom().trim().isEmpty()) {
-            throw new IllegalArgumentException("Le nom du produit est obligatoire");
-        }
-        
-        if (produit.getDescription() == null || produit.getDescription().trim().isEmpty()) {
-            throw new IllegalArgumentException("La description du produit est obligatoire");
-        }
-        
-        if (produit.getPrixUnitaire() <= 0) {
-            throw new IllegalArgumentException("Le prix unitaire doit être supérieur à zéro");
-        }
-        
-        if (produit.getQuantite() <= 0) {
-            throw new IllegalArgumentException("La quantité doit être supérieure à zéro");
-        }
-        
-        if (produit.getUnite() == null) {
-            throw new IllegalArgumentException("L'unité de mesure est obligatoire");
-        }
-        
-        // Validation du champ estBio (obligatoire)
-        // Note: No need to validate estBio as it's a boolean with a default value in the entity
-        
-        if (produit.getPhotos() == null || produit.getPhotos().isEmpty()) {
-            throw new IllegalArgumentException("Au moins une photo est requise");
-        }
-        
-        if (produit.getPhotos().size() > 4) {
-            throw new IllegalArgumentException("Maximum 4 photos autorisées");
-        }
-        
-        // Validation du nom du produit
-        validerNomProduit(produit.getNom());
-        
-        // Associer le producteur
-        Producteur producteur = producteurRepository.findById(producteurId)
-                .orElseThrow(() -> new EntityNotFoundException("Producteur introuvable"));
-        produit.setProducteur(producteur);
-        
-        // Associer la catégorie
-        Categorie categorie = categorieRepository.findById(categorieId)
-                .orElseThrow(() -> new EntityNotFoundException("Catégorie introuvable"));
-        produit.setCategorie(categorie);
-        
-        // Initialiser le stock disponible
-        produit.setStockDisponible(produit.getQuantite());
-        
-        return produitRepository.save(produit);
-    }
-    
-    /**
-     * Récupère les produits existants dans une catégorie pour permettre
-     * au producteur de choisir parmi eux lors de la création
-     */
-    public ProduitsParCategorieDTO getProduitsParCategorie(int categorieId) {
-        Categorie categorie = categorieRepository.findById(categorieId)
-                .orElseThrow(() -> new EntityNotFoundException("Cette catégorie n'existe pas"));
-        
-        List<Produit> produits = produitRepository.findByCategorieId(categorieId);
-        List<ProduitSimpleDTO> produitDtos = produits.stream()
-                .map(produit -> new ProduitSimpleDTO(
-                        produit.getId(),
-                        produit.getNom(),
-                        produit.getPrixUnitaire(),
-                        produit.getProducteur() != null ? produit.getProducteur().getId() : 0,
-                        produit.getProducteur() != null ? produit.getProducteur().getNom() : "",
-                        produit.getProducteur() != null ? produit.getProducteur().getPrenom() : ""
-                ))
-                .toList();
-        
-        return new ProduitsParCategorieDTO(
-                categorie.getId(),
-                categorie.getLibelle(),
-                produitDtos
-        );
-    }
-    
-    /**
-     * Récupère tous les produits existants d'un producteur pour une catégorie spécifique
-     */
-    public List<ProduitSimpleDTO> getProduitsDuProducteurParCategorie(int producteurId, int categorieId) {
-        List<Produit> produits = produitRepository.findByProducteurIdAndCategorieId(producteurId, categorieId);
-        return produits.stream()
-                .map(produit -> new ProduitSimpleDTO(
-                        produit.getId(),
-                        produit.getNom(),
-                        produit.getPrixUnitaire(),
-                        produit.getProducteur() != null ? produit.getProducteur().getId() : 0,
-                        produit.getProducteur() != null ? produit.getProducteur().getNom() : "",
-                        produit.getProducteur() != null ? produit.getProducteur().getPrenom() : ""
-                ))
-                .toList();
+        produitRepository.save(produit);
+        return produit;
     }
     
     public Produit modifierProduit(Produit produitModifie , int produitId , int producteurId){
@@ -211,25 +88,40 @@ public class ProduitService {
             produit.setNom(produitModifie.getNom());
         }
         
-        // Mettre à jour uniquement les champs non null
+        // Valider et mettre à jour le prix s'il est fourni
+        if(produitModifie.getPrixUnitaire() > 0) {
+            validerPrix(produitModifie.getPrixUnitaire());
+            produit.setPrixUnitaire(produitModifie.getPrixUnitaire());
+        }
+        
+        // Valider et mettre à jour la quantité si elle est fournie
+        if(produitModifie.getQuantite() >= 0) {
+            validerQuantite(produitModifie.getQuantite());
+            produit.setQuantite(produitModifie.getQuantite());
+            // Mettre à jour le stock disponible en conséquence
+            produit.setStockDisponible(produitModifie.getQuantite());
+        }
+        
+        // Mettre à jour la description si elle est fournie
         if(produitModifie.getDescription() != null) {
             produit.setDescription(produitModifie.getDescription());
         }
-        if(produitModifie.getPrixUnitaire() > 0) {
-            produit.setPrixUnitaire(produitModifie.getPrixUnitaire());
-        }
+        
+        // Mettre à jour l'unité si elle est fournie
         if(produitModifie.getUnite() != null) {
             produit.setUnite(produitModifie.getUnite());
         }
-        if(produitModifie.getQuantite() > 0) {
-            produit.setQuantite(produitModifie.getQuantite());
-            produit.setStockDisponible(produitModifie.getQuantite());
+        
+        // Mettre à jour la catégorie si elle est fournie
+        if(produitModifie.getCategorie() != null && produitModifie.getCategorie().getId() > 0) {
+            Categorie categorie = categorieRepository.findById(produitModifie.getCategorie().getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Cette catégorie n'existe pas"));
+            produit.setCategorie(categorie);
         }
-        // Mettre à jour le champ estBio si fourni
-        produit.setEstBio(produitModifie.isEstBio());
-        // Mettre à jour les photos uniquement si elles sont fournies
+        
+        // Mettre à jour les photos si elles sont fournies
         if(produitModifie.getPhotos() != null && !produitModifie.getPhotos().isEmpty()) {
-            if(produitModifie.getPhotos().size() > 4){
+            if(produitModifie.getPhotos().size() > 4) {
                 throw new IllegalArgumentException("Le produit ne peut pas avoir plus de 4 photos");
             }
             produit.setPhotos(produitModifie.getPhotos());
@@ -238,7 +130,9 @@ public class ProduitService {
         produitRepository.save(produit);
         return produit;
     }
-
+    
+    // ========== Méthodes publiques ==========
+    
     public List<Produit> listerLesProduits(int producteurId){
         Producteur producteur = producteurRepository.findById(producteurId)
                 .orElseThrow(()->new EntityNotFoundException("Ce producteur n'existe pas"));
@@ -264,25 +158,28 @@ public class ProduitService {
         } produitRepository.delete(produit);
         return "Le produit a été supprimé";
     }
-    public String supprimerTousLesProduits() {
-        long count = produitRepository.count();
-        produitRepository.deleteAll();
-        return count + " produits ont été supprimés";
+    
+    /**
+     * Récupère un produit par son ID
+     * @param produitId ID du produit
+     * @return Le produit correspondant
+     * @throws EntityNotFoundException si le produit n'existe pas
+     */
+    public Produit getProduitById(int produitId) {
+        return produitRepository.findById(produitId)
+                .orElseThrow(() -> new EntityNotFoundException("Produit non trouvé avec l'ID: " + produitId));
     }
     
-    private void validerNomProduit(String nomProduit) {
-        if (nomProduit == null || nomProduit.trim().isEmpty()) {
-            throw new IllegalArgumentException("Le nom du produit ne peut pas être vide");
-        }
-        
-        String nomNormalise = nomProduit.trim().toLowerCase();
-
-        for (String produitInterdit : produitsInterdits) {
-            if (nomNormalise.contains(produitInterdit)) {
-                throw new IllegalArgumentException(
-                    "Le nom du produit '" + nomProduit + "' n'est pas autorisé. " +
-                    "Veuillez choisir un autre nom.");
-            }
-        }
+    /**
+     * Récupère les produits par catégorie
+     * @param categorieId ID de la catégorie
+     * @return Liste des produits de la catégorie
+     * @throws EntityNotFoundException si la catégorie n'existe pas
+     */
+    public List<Produit> getProduitsParCategorie(int categorieId) {
+        Categorie categorie = categorieRepository.findById(categorieId)
+                .orElseThrow(() -> new EntityNotFoundException("Catégorie non trouvée avec l'ID: " + categorieId));
+        return produitRepository.findByCategorieAndStockDisponibleGreaterThan(categorie, 0);
     }
+
 }

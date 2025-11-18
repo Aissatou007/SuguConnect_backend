@@ -7,13 +7,13 @@ import odk.SuguConnect.DTO.Responses.ProducteurResponseDTO;
 import odk.SuguConnect.Entity.Producteur;
 import odk.SuguConnect.Enums.Role;
 import odk.SuguConnect.Enums.StatutProducteur;
-import odk.SuguConnect.Mapper.ProducteurMapper;
 import odk.SuguConnect.Repository.ProducteurRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -21,128 +21,91 @@ public class ProducteurService {
     private final ProducteurRepository producteurRepository;
     private final PasswordEncoder passwordEncoder;
 
-
     public String inscriptionProducteur(ProducteurRequestDTO dto, String telephone) {
-        verifierCompteNonExistant(telephone);
-        
-        Producteur producteur = creerProducteur(dto);
+        if (producteurRepository.findByTelephone(telephone) != null) {
+            throw new IllegalArgumentException("Ce numéro de téléphone est déjà utilisé");
+        }
+
+        Producteur producteur = new Producteur();
+        producteur.setNom(dto.getNom());
+        producteur.setPrenom(dto.getPrenom());
+        producteur.setTelephone(telephone);
+        producteur.setEmail(dto.getEmail());
+        producteur.setLocalisation(dto.getLocalisation());
+        producteur.setLatitude(dto.getLatitude());
+        producteur.setLongitude(dto.getLongitude());
+        producteur.setMotDePasse(passwordEncoder.encode(dto.getMotDePasse()));
+        producteur.setRole(Role.PRODUCTEUR);
+        producteur.setStatutProducteur(StatutProducteur.EN_ATTENTE);
+        producteur.setDescription(dto.getDescription());
+        producteur.setNomFerme(dto.getNomFerme());
+        producteur.setDateInscription(LocalDate.now());
+        producteur.setActif(true);
+
         producteurRepository.save(producteur);
-        
-        return "Soyez le bienvenue ";
+        return "Inscription réussie. Votre compte est en attente de validation par un administrateur.";
     }
-    
-    //Récupérer tous les producteurs
+
     public List<ProducteurResponseDTO> recupererLesProducteurs() {
-        return producteurRepository.findAll().stream()
-                .map(ProducteurMapper::toResponse)
-                .toList();
+        List<Producteur> producteurs = producteurRepository.findAll();
+        return producteurs.stream()
+                .map(this::toResponseDTO)
+                .collect(Collectors.toList());
     }
 
     public ProducteurResponseDTO recupererUnProducteur(int id) {
-        Producteur producteur = findProducteurById(id);
-        return ProducteurMapper.toResponse(producteur);
+        Producteur producteur = producteurRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Producteur non trouvé"));
+        return toResponseDTO(producteur);
     }
-    
-    //Modifier les informations d'un producteur
 
     public String modifierInformationProducteur(ProducteurRequestDTO dto, int id) {
-        Producteur producteur = findProducteurById(id);
-        mettreAJourInformations(producteur, dto);
+        Producteur producteur = producteurRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Producteur non trouvé"));
+
+        producteur.setNom(dto.getNom());
+        producteur.setPrenom(dto.getPrenom());
+        producteur.setTelephone(dto.getTelephone());
+        producteur.setEmail(dto.getEmail());
+        producteur.setLocalisation(dto.getLocalisation());
+        producteur.setLatitude(dto.getLatitude());
+        producteur.setLongitude(dto.getLongitude());
+        producteur.setDescription(dto.getDescription());
+        producteur.setNomFerme(dto.getNomFerme());
+
         producteurRepository.save(producteur);
-        return "Vos informations ont été modifiées avec succès";
+        return "Informations mises à jour avec succès";
     }
-    
-    // Supprimer un producteur
+
     public String supprimerProducteur(int id) {
-        Producteur producteur = findProducteurById(id);
+        Producteur producteur = producteurRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Producteur non trouvé"));
+
         producteurRepository.delete(producteur);
-        return "Le compte a été supprimé avec succès";
+        return "Compte supprimé avec succès";
     }
 
-    private void verifierCompteNonExistant(String telephone) {
-        if (producteurRepository.findByTelephone(telephone) != null) {
-            throw new IllegalArgumentException("Ce compte existe déjà");
-        }
-    }
-    
-    private Producteur creerProducteur(ProducteurRequestDTO dto) {
-        // Valider les noms avant création
-        validerNoms(dto.nom(), dto.prenom());
-        
-        Producteur producteur = ProducteurMapper.toEntity(dto, new Producteur());
-        producteur.setMotDePasse(passwordEncoder.encode(dto.motDePasse()));
-        producteur.setRole(Role.PRODUCTEUR);
-        producteur.setStatutProducteur(StatutProducteur.EN_ATTENTE);
-        producteur.setDateInscription(LocalDate.now());
-        producteur.setActif(true);
-        return producteur;
-    }
-    
-    private Producteur findProducteurById(int id) {
-        return producteurRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Ce producteur n'a pas de compte"));
-    }
-    
-    private void mettreAJourInformations(Producteur producteur, ProducteurRequestDTO dto) {
-        // Valider les noms avant mise à jour
-        validerNoms(dto.nom(), dto.prenom());
-        
-        producteur.setNom(dto.nom());
-        producteur.setPrenom(dto.prenom());
-        producteur.setTelephone(dto.telephone());
-        producteur.setEmail(dto.email());
-        producteur.setLocalisation(dto.localisation());
-        producteur.setDescription(dto.description());
-
-        if (dto.motDePasse() != null && !dto.motDePasse().isEmpty()) {
-            producteur.setMotDePasse(passwordEncoder.encode(dto.motDePasse()));
-        }
+    public Producteur getProducteurById(int id) {
+        return producteurRepository.findById(id).orElse(null);
     }
 
-    private void validerNoms(String nom, String prenom) {
-        // Vérifier que les noms ne sont pas null ou vides
-        if (nom == null || nom.trim().isEmpty()) {
-            throw new IllegalArgumentException("Le nom du producteur ne peut pas être vide");
-        }
-        
-        if (prenom == null || prenom.trim().isEmpty()) {
-            throw new IllegalArgumentException("Le prénom du producteur ne peut pas être vide");
-        }
-        
-        // Convertir en minuscules pour comparaison
-        String nomLower = nom.trim().toLowerCase();
-        String prenomLower = prenom.trim().toLowerCase();
-        
-        // Liste de mots interdits
-        String[] motsInterdits = {
-            "telephone", "tele", "phone", "mobile", "cellulaire",
-            "email", "mail", "courriel", "e-mail",
-            "adresse", "address", "location", "lieu",
-            "motdepasse", "password", "mdp", "pass",
-            "admin", "administrateur", "moderateur",
-            "test", "demo", "exemple", "sample"
-        };
-        
-        // Vérifier si les noms contiennent des mots interdits
-        for (String mot : motsInterdits) {
-            if (nomLower.contains(mot) || prenomLower.contains(mot)) {
-                throw new IllegalArgumentException(
-                    "Les noms ne peuvent pas contenir des termes comme 'telephone', 'email', etc. Veuillez entrer votre vrai nom.");
-            }
-        }
-        
-        // Vérifier la longueur minimale
-        if (nom.trim().length() < 2) {
-            throw new IllegalArgumentException("Le nom doit contenir au moins 2 caractères");
-        }
-        
-        if (prenom.trim().length() < 2) {
-            throw new IllegalArgumentException("Le prénom doit contenir au moins 2 caractères");
-        }
-        
-        // Vérifier qu'il ne s'agit pas de chiffres uniquement
-        if (nom.trim().matches("\\d+") || prenom.trim().matches("\\d+")) {
-            throw new IllegalArgumentException("Les noms ne peuvent pas être composés uniquement de chiffres");
-        }
+    private ProducteurResponseDTO toResponseDTO(Producteur producteur) {
+        ProducteurResponseDTO dto = new ProducteurResponseDTO();
+        dto.setId(producteur.getId());
+        dto.setNom(producteur.getNom());
+        dto.setPrenom(producteur.getPrenom());
+        dto.setTelephone(producteur.getTelephone());
+        dto.setEmail(producteur.getEmail());
+        dto.setLocalisation(producteur.getLocalisation());
+        dto.setLatitude(producteur.getLatitude());
+        dto.setLongitude(producteur.getLongitude());
+        dto.setRole(producteur.getRole());
+        dto.setStatutProducteur(producteur.getStatutProducteur());
+        dto.setDescription(producteur.getDescription());
+        dto.setNomFerme(producteur.getNomFerme());
+        dto.setPhotoUrl(producteur.getPhotoUrl());
+        dto.setDateInscription(producteur.getDateInscription());
+        dto.setMotifDeRejet(producteur.getMotifDeRejet());
+        return dto;
     }
 }

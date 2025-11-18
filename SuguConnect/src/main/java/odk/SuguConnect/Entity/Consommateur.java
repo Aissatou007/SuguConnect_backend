@@ -15,7 +15,7 @@ import java.util.List;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@JsonIgnoreProperties({"panier", "paiements", "commandes", "produit", "motDePasse"})
+@JsonIgnoreProperties({"panier", "paiements", "commandes", "produit", "motDePasse", "conversations"})
 public class Consommateur extends Utilisateur {
    @OneToOne(cascade = CascadeType.ALL)
     private Panier panier ;
@@ -29,4 +29,8 @@ public class Consommateur extends Utilisateur {
           joinColumns = @JoinColumn(name = "consommateur_id"),
           inverseJoinColumns = @JoinColumn(name = "produit_id"))
     private List<Produit> produit ;
+    
+    // Conversations du consommateur
+    @OneToMany(mappedBy = "consommateur", cascade = CascadeType.ALL)
+    private List<Conversation> conversations;
 }

@@ -193,6 +193,8 @@ public class DataInitializer {
                 mangues.setUnite(Unite.KILOGRAMME);
                 mangues.setCategorie(catFruits);
                 mangues.setProducteur(producteur1);
+                // Ajout d'une photo de test
+                mangues.setPhotos(Arrays.asList("mangues.jpg"));
                 produitRepository.save(mangues);
                 
                 Produit bananes = new Produit();
@@ -203,6 +205,8 @@ public class DataInitializer {
                 bananes.setUnite(Unite.KILOGRAMME);
                 bananes.setCategorie(catFruits);
                 bananes.setProducteur(producteur1);
+                // Ajout d'une photo de test
+                bananes.setPhotos(Arrays.asList("bananes.jpg"));
                 produitRepository.save(bananes);
                 
                 Produit oranges = new Produit();
@@ -213,6 +217,8 @@ public class DataInitializer {
                 oranges.setUnite(Unite.KILOGRAMME);
                 oranges.setCategorie(catFruits);
                 oranges.setProducteur(producteur1);
+                // Ajout d'une photo de test
+                oranges.setPhotos(Arrays.asList("oranges.jpg"));
                 produitRepository.save(oranges);
             }
             
@@ -226,6 +232,8 @@ public class DataInitializer {
                 tomates.setUnite(Unite.KILOGRAMME);
                 tomates.setCategorie(catLegumes);
                 tomates.setProducteur(producteur2);
+                // Ajout d'une photo de test
+                tomates.setPhotos(Arrays.asList("tomates.jpg"));
                 produitRepository.save(tomates);
                 
                 Produit oignons = new Produit();
@@ -236,6 +244,8 @@ public class DataInitializer {
                 oignons.setUnite(Unite.KILOGRAMME);
                 oignons.setCategorie(catLegumes);
                 oignons.setProducteur(producteur2);
+                // Ajout d'une photo de test
+                oignons.setPhotos(Arrays.asList("oignons.jpg"));
                 produitRepository.save(oignons);
                 
                 Produit carottes = new Produit();
@@ -246,6 +256,8 @@ public class DataInitializer {
                 carottes.setUnite(Unite.KILOGRAMME);
                 carottes.setCategorie(catLegumes);
                 carottes.setProducteur(producteur2);
+                // Ajout d'une photo de test
+                carottes.setPhotos(Arrays.asList("carottes.jpg"));
                 produitRepository.save(carottes);
             }
             

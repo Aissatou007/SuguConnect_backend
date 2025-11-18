@@ -22,11 +22,13 @@ import java.util.UUID;
 public class FileStorageService {
 
     private final Path fileStorageLocation;
+    private final ImageService imageService;
 
     @Autowired
-    public FileStorageService(FileStorageProperties fileStorageProperties) {
+    public FileStorageService(FileStorageProperties fileStorageProperties, ImageService imageService) {
         this.fileStorageLocation = Paths.get(fileStorageProperties.getUploadDir())
                 .toAbsolutePath().normalize();
+        this.imageService = imageService;
 
         try {
             Files.createDirectories(this.fileStorageLocation);
@@ -35,37 +37,51 @@ public class FileStorageService {
         }
     }
 
+    /**
+     * Stocke un fichier unique
+     */
     public String storeFile(MultipartFile file) {
-        System.out.println("Début de l'enregistrement du fichier: " + file.getOriginalFilename());
+        return storeFileWithThumbnail(file, 300, 300); // Valeurs par défaut pour les vignettes
+    }
 
+    /**
+     * Stocke un fichier unique avec génération de vignettes
+     */
+    public String storeFileWithThumbnail(MultipartFile file, int thumbnailWidth, int thumbnailHeight) {
+        // Nettoyer le nom du fichier
         String originalFileName = StringUtils.cleanPath(file.getOriginalFilename());
         
         try {
+            // Vérifier si le fichier contient des caractères invalides
             if(originalFileName.contains("..")) {
                 throw new RuntimeException("Le nom du fichier contient une séquence de chemin invalide " + originalFileName);
             }
 
+            // Générer un nom de fichier unique
             String fileExtension = "";
             if(originalFileName.contains(".")) {
                 fileExtension = originalFileName.substring(originalFileName.lastIndexOf("."));
             }
             String newFileName = UUID.randomUUID().toString() + fileExtension;
-            System.out.println("Nouveau nom de fichier généré: " + newFileName);
 
             // Copier le fichier vers l'emplacement cible
             Path targetLocation = this.fileStorageLocation.resolve(newFileName);
-            System.out.println("Chemin cible: " + targetLocation.toString());
-            
             Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
-            System.out.println("Fichier copié avec succès");
+
+            // Générer et stocker les vignettes si le fichier est une image
+            if (isImageFile(fileExtension)) {
+                generateAndStoreThumbnails(file, newFileName, thumbnailWidth, thumbnailHeight);
+            }
 
             return newFileName;
         } catch (IOException ex) {
-            System.err.println("Erreur lors de l'enregistrement du fichier " + originalFileName + ": " + ex.getMessage());
-            ex.printStackTrace();
             throw new RuntimeException("Impossible de stocker le fichier " + originalFileName + ". Veuillez réessayer!", ex);
         }
     }
+
+    /**
+     * Stocke plusieurs fichiers
+     */
     public List<String> storeFiles(MultipartFile[] files) {
         List<String> fileNames = new ArrayList<>();
         
@@ -81,6 +97,9 @@ public class FileStorageService {
         return fileNames;
     }
 
+    /**
+     * Charge un fichier en tant que Resource
+     */
     public Resource loadFileAsResource(String fileName) {
         try {
             Path filePath = this.fileStorageLocation.resolve(fileName).normalize();
@@ -96,6 +115,9 @@ public class FileStorageService {
         }
     }
 
+    /**
+     * Supprime un fichier
+     */
     public void deleteFile(String fileName) {
         try {
             Path filePath = this.fileStorageLocation.resolve(fileName).normalize();
@@ -105,6 +127,9 @@ public class FileStorageService {
         }
     }
 
+    /**
+     * Supprime plusieurs fichiers
+     */
     public void deleteFiles(List<String> fileNames) {
         if (fileNames != null && !fileNames.isEmpty()) {
             for (String fileName : fileNames) {
@@ -113,6 +138,39 @@ public class FileStorageService {
         }
     }
 
+    /**
+     * Vérifie si un fichier est une image
+     */
+    private boolean isImageFile(String fileExtension) {
+        return fileExtension != null && 
+               (fileExtension.equalsIgnoreCase(".jpg") || 
+                fileExtension.equalsIgnoreCase(".jpeg") || 
+                fileExtension.equalsIgnoreCase(".png") || 
+                fileExtension.equalsIgnoreCase(".gif") || 
+                fileExtension.equalsIgnoreCase(".bmp"));
+    }
+
+    /**
+     * Génère et stocke les vignettes pour une image
+     */
+    private void generateAndStoreThumbnails(MultipartFile originalFile, String originalFileName, int width, int height) {
+        try {
+            // Générer la vignette en utilisant le nouveau ImageService
+            byte[] thumbnailBytes = imageService.createThumbnail(originalFile, width, height);
+            
+            // Sauvegarder la vignette
+            String thumbnailFileName = "thumb_" + originalFileName;
+            Path thumbnailPath = this.fileStorageLocation.resolve(thumbnailFileName);
+            Files.write(thumbnailPath, thumbnailBytes);
+        } catch (Exception e) {
+            // En cas d'erreur, on continue sans vignette
+            System.err.println("Impossible de générer la vignette pour " + originalFileName + ": " + e.getMessage());
+        }
+    }
+
+    /**
+     * Obtient le chemin du répertoire de stockage
+     */
     public Path getFileStorageLocation() {
         return fileStorageLocation;
     }
