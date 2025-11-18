@@ -5,14 +5,17 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import odk.SuguConnect.DTO.Responses.CategorieResponseDTO;
 import odk.SuguConnect.Entity.Categorie;
 import odk.SuguConnect.Entity.Produit;
+import odk.SuguConnect.Mapper.CategorieMapper;
 import odk.SuguConnect.Service.CategorieService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -26,25 +29,45 @@ public class CategorieController {
     }
 
     @PreAuthorize("hasRole('ADMIN')") // Correction : hasRole avec 'R' majuscule
-    @PostMapping
+    @PostMapping(consumes = {"multipart/form-data"})
     @Operation(
             summary = "Créer une catégorie",
-            description = "Permet à un administrateur de créer une nouvelle catégorie de produits"
+            description = "Permet à un administrateur de créer une nouvelle catégorie de produits avec photo"
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Catégorie créée avec succès"),
             @ApiResponse(responseCode = "400", description = "Données invalides"),
             @ApiResponse(responseCode = "403", description = "Accès refusé")
     })
-    public ResponseEntity<Categorie> creerCategorie(
+    public ResponseEntity<CategorieResponseDTO> creerCategorie(
             @Parameter(description = "Libellé de la catégorie", required = true)
-            @RequestParam String libelle,
+            @RequestPart String libelle,
             @Parameter(description = "Photo de la catégorie", required = false)
-            @RequestParam(required = false) MultipartFile photo) {
+            @RequestPart(required = false) MultipartFile photo) {
         try {
+            System.out.println("Requête de création de catégorie reçue");
+            System.out.println("Libellé: " + libelle);
+            if (photo != null) {
+                System.out.println("Photo reçue: " + photo.getOriginalFilename() + " (size: " + photo.getSize() + " bytes)");
+            } else {
+                System.out.println("Aucune photo reçue");
+            }
+            
             Categorie categorie = categorieService.creerCategorie(libelle, photo);
-            return ResponseEntity.ok(categorie);
+            System.out.println("Catégorie créée avec ID: " + categorie.getId());
+            if (categorie.getPhotoUrl() != null) {
+                System.out.println("Photo URL de la catégorie: " + categorie.getPhotoUrl());
+            }
+            
+            CategorieResponseDTO categorieDto = CategorieMapper.toDto(categorie);
+            return ResponseEntity.ok(categorieDto);
+        } catch (IOException e) {
+            System.err.println("IOException lors de la création de la catégorie: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.badRequest().build();
         } catch (Exception e) {
+            System.err.println("Exception lors de la création de la catégorie: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.badRequest().build();
         }
     }
@@ -60,7 +83,7 @@ public class CategorieController {
             @ApiResponse(responseCode = "404", description = "Catégorie non trouvée"),
             @ApiResponse(responseCode = "403", description = "Accès refusé")
     })
-    public ResponseEntity<Categorie> modifierCategorie(
+    public ResponseEntity<CategorieResponseDTO> modifierCategorie(
             @Parameter(description = "ID de la catégorie", required = true)
             @PathVariable int id,
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
@@ -68,7 +91,8 @@ public class CategorieController {
             )
             @RequestBody Categorie categorie) {
         Categorie categorieModifiee = categorieService.modifierCategorie(id, categorie);
-        return ResponseEntity.ok(categorieModifiee);
+        CategorieResponseDTO categorieDto = CategorieMapper.toDto(categorieModifiee);
+        return ResponseEntity.ok(categorieDto);
     }
 
     @PreAuthorize("hasRole('ADMIN')")
@@ -95,8 +119,12 @@ public class CategorieController {
             description = "Retourne la liste de toutes les catégories disponibles"
     )
     @ApiResponse(responseCode = "200", description = "Liste des catégories récupérée")
-    public ResponseEntity<List<Categorie>> toutesLesCategories() {
-        return ResponseEntity.ok(categorieService.listerCategorie());
+    public ResponseEntity<List<CategorieResponseDTO>> toutesLesCategories() {
+        List<Categorie> categories = categorieService.listerCategorie();
+        List<CategorieResponseDTO> categorieDtos = categories.stream()
+                .map(CategorieMapper::toDto)
+                .toList();
+        return ResponseEntity.ok(categorieDtos);
     }
 
     @GetMapping(path = "/{id}")
@@ -108,10 +136,12 @@ public class CategorieController {
             @ApiResponse(responseCode = "200", description = "Catégorie trouvée"),
             @ApiResponse(responseCode = "404", description = "Catégorie non trouvée")
     })
-    public ResponseEntity<Categorie> categorieParId(
+    public ResponseEntity<CategorieResponseDTO> categorieParId(
             @Parameter(description = "ID de la catégorie", required = true)
             @PathVariable int id) {
-        return ResponseEntity.ok(categorieService.recupererUneCategorie(id));
+        Categorie categorie = categorieService.recupererUneCategorie(id);
+        CategorieResponseDTO categorieDto = CategorieMapper.toDto(categorie);
+        return ResponseEntity.ok(categorieDto);
     }
 
     @GetMapping(path = "/{id}/produits")

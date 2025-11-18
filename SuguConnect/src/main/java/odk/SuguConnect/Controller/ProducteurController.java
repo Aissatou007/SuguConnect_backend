@@ -9,13 +9,17 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import odk.SuguConnect.DTO.Request.ProducteurRequestDTO;
+import odk.SuguConnect.DTO.Request.ProduitCreationRequestDTO;
 import odk.SuguConnect.DTO.Request.ProduitRequestDTO;
-import odk.SuguConnect.DTO.Responses.ProducteurResponseDTO;
-import odk.SuguConnect.DTO.Responses.VenteDTO;
+import odk.SuguConnect.DTO.Responses.*;
 import odk.SuguConnect.Entity.Categorie;
 import odk.SuguConnect.Entity.Commande;
+import odk.SuguConnect.Entity.Paiement;
 import odk.SuguConnect.Entity.Produit;
 import odk.SuguConnect.Enums.StatutCommande;
+import odk.SuguConnect.Enums.StatutPaiement;
+import odk.SuguConnect.Mapper.CommandeMapper;
+import odk.SuguConnect.Mapper.ProduitMapper;
 import odk.SuguConnect.Service.CommandeService;
 import odk.SuguConnect.Service.FileStorageService;
 import odk.SuguConnect.Service.ProducteurService;
@@ -39,7 +43,8 @@ public class ProducteurController {
     private final FileStorageService fileStorageService;
     private final CommandeService commandeService;
     private final odk.SuguConnect.Service.ProduitService produitService;  // Ajout du ProduitService pour respecter SRP
-
+    private final odk.SuguConnect.Service.PaiementService paiementService;  // Ajout du PaiementService
+    
     @PostMapping(path = "/inscription")
     @Operation(
             summary = "Inscription d'un producteur",
@@ -140,6 +145,7 @@ public class ProducteurController {
             @RequestPart(value = "prixUnitaire") String prixUnitaire,
             @RequestPart(value = "unite") String unite,
             @RequestPart(value = "quantite") String quantite,
+            @RequestPart(value = "estBio") String estBio, // Now required
             @RequestPart(value = "categorieId") String categorieId,
             @Parameter(
                     description = "Photos du produit (minimum 1, maximum 4). Pour ajouter plusieurs fichiers, sélectionnez ce champ plusieurs fois.",
@@ -155,18 +161,27 @@ public class ProducteurController {
         if (photos.size() > 4) {
             return ResponseEntity.badRequest().body("Maximum 4 photos autorisées");
         }
+        
+        // Vérifier que estBio est fourni
+        if (estBio == null || estBio.isEmpty()) {
+            return ResponseEntity.badRequest().body("Le champ 'estBio' est obligatoire");
+        }
 
         // Convertir les paramètres String en types appropriés
         float prixUnitaireFloat;
         int quantiteInt;
         int categorieIdInt;
+        boolean estBioBool;
 
         try {
             prixUnitaireFloat = Float.parseFloat(prixUnitaire);
             quantiteInt = Integer.parseInt(quantite);
             categorieIdInt = Integer.parseInt(categorieId);
+            estBioBool = Boolean.parseBoolean(estBio);
         } catch (NumberFormatException e) {
-            return ResponseEntity.badRequest().body("Format de nombre invalide");
+            return ResponseEntity.badRequest().body("Format de nombre invalide: " + e.getMessage());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body("Valeur invalide pour 'estBio'. Utilisez 'true' ou 'false'.");
         }
 
         // Sauvegarder les photos et obtenir les URLs
@@ -189,6 +204,7 @@ public class ProducteurController {
         produit.setPrixUnitaire(prixUnitaireFloat);
         produit.setUnite(odk.SuguConnect.Enums.Unite.valueOf(unite.toUpperCase()));
         produit.setQuantite(quantiteInt);
+        produit.setEstBio(estBioBool); // Définir si le produit est bio
         produit.setPhotos(photoUrls);
 
         // Associer la catégorie
@@ -201,19 +217,137 @@ public class ProducteurController {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body("Produit ajouté avec succès avec " + photoUrls.size() + " photos, ID: " + produitAjoute.getId());
     }
+    
+    @PostMapping(path = "/{producteurId}/produit/ameliore", consumes = {"application/json"})
+    @Operation(
+            summary = "Ajouter un produit - Processus amélioré",
+            description = "Permet à un producteur d'ajouter un nouveau produit avec un processus amélioré : choisir d'abord la catégorie, puis sélectionner ou entrer le nom du produit"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Produit ajouté avec succès"),
+            @ApiResponse(responseCode = "403", description = "Producteur non autorisé"),
+            @ApiResponse(responseCode = "400", description = "Données invalides")
+    })
+    public ResponseEntity<String> ajouterProduitAmeliore(
+            @Parameter(description = "ID du producteur", required = true)
+            @PathVariable int producteurId,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Informations du produit à ajouter"
+            )
+            @RequestBody ProduitCreationRequestDTO produitRequest) {
 
+        // Créer le produit
+        Produit produit = new Produit();
+        produit.setNom(produitRequest.nom());
+        produit.setDescription(produitRequest.description());
+        produit.setPrixUnitaire(produitRequest.prixUnitaire());
+        produit.setUnite(produitRequest.unite());
+        produit.setQuantite(produitRequest.stockDisponible());
+        produit.setEstBio(produitRequest.estBio());
+        produit.setPhotos(produitRequest.photos());
+
+        // Ajouter le produit avec le processus amélioré
+        Produit produitAjoute = produitService.ajouterProduitAmeliore(produit, producteurId, produitRequest.categorieId());
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body("Produit ajouté avec succès avec " + produitRequest.photos().size() + " photos, ID: " + produitAjoute.getId());
+    }
+    
+    @GetMapping(path = "/{producteurId}/categorie/{categorieId}/produits-existants")
+    @Operation(
+            summary = "Récupérer les produits existants dans une catégorie",
+            description = "Permet à un producteur de voir les produits existants dans une catégorie pour faciliter la création de nouveaux produits"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Liste des produits récupérée"),
+            @ApiResponse(responseCode = "404", description = "Catégorie non trouvée")
+    })
+    public ResponseEntity<ProduitsParCategorieDTO> getProduitsParCategorie(
+            @Parameter(description = "ID du producteur", required = true)
+            @PathVariable int producteurId,
+            @Parameter(description = "ID de la catégorie", required = true)
+            @PathVariable int categorieId) {
+        
+        ProduitsParCategorieDTO produitsParCategorie = produitService.getProduitsParCategorie(categorieId);
+        return ResponseEntity.ok(produitsParCategorie);
+    }
+    
+    @GetMapping(path = "/{producteurId}/categorie/{categorieId}/mes-produits")
+    @Operation(
+            summary = "Récupérer mes produits dans une catégorie",
+            description = "Permet à un producteur de voir ses propres produits existants dans une catégorie"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Liste des produits récupérée"),
+            @ApiResponse(responseCode = "404", description = "Catégorie non trouvée")
+    })
+    public ResponseEntity<List<ProduitSimpleDTO>> getMesProduitsParCategorie(
+            @Parameter(description = "ID du producteur", required = true)
+            @PathVariable int producteurId,
+            @Parameter(description = "ID de la catégorie", required = true)
+            @PathVariable int categorieId) {
+        
+        List<ProduitSimpleDTO> mesProduits = produitService.getProduitsDuProducteurParCategorie(producteurId, categorieId);
+        return ResponseEntity.ok(mesProduits);
+    }
+    
     @GetMapping(path = "/{producteurId}/produit")
     @Operation(
             summary = "Lister les produits d'un producteur",
             description = "Retourne tous les produits d'un producteur spécifique"
     )
     @ApiResponse(responseCode = "200", description = "Liste des produits récupérée")
-    public ResponseEntity<List<Produit>> listerProduits(
+    public ResponseEntity<List<ProduitResponseDTO>> listerProduits(
             @Parameter(description = "ID du producteur", required = true)
             @PathVariable int producteurId) {
         List<Produit> produits = produitService.listerLesProduits(producteurId);
-        return ResponseEntity.ok(produits);
+        List<ProduitResponseDTO> produitDtos = produits.stream()
+                .map(ProduitMapper::toDto)
+                .toList();
+        return ResponseEntity.ok(produitDtos);
     }
+    
+    @GetMapping(path = "/{producteurId}/commandes")
+    @Operation(
+            summary = "Lister toutes les commandes d'un producteur",
+            description = "Retourne toutes les commandes contenant des produits de ce producteur"
+    )
+    @ApiResponse(responseCode = "200", description = "Liste des commandes récupérée")
+    public ResponseEntity<List<CommandeResponseDTO>> listerCommandes(
+            @Parameter(description = "ID du producteur", required = true)
+            @PathVariable int producteurId,
+            @Parameter(description = "Filtrer par statut de commande (optionnel)")
+            @RequestParam(required = false) StatutCommande statut) {
+        List<Commande> commandes = commandeService.getCommandesParProducteur(producteurId, statut);
+        List<CommandeResponseDTO> commandeDtos = commandes.stream()
+                .map(CommandeMapper::toResponse)
+                .toList();
+        return ResponseEntity.ok(commandeDtos);
+    }
+    
+    @GetMapping(path = "/{producteurId}/paiements")
+    @Operation(
+            summary = "Lister tous les paiements reçus par un producteur",
+            description = "Retourne tous les paiements des commandes contenant des produits de ce producteur"
+    )
+    @ApiResponse(responseCode = "200", description = "Liste des paiements récupérée")
+    public ResponseEntity<List<PaiementSimpleDTO>> listerPaiements(
+            @Parameter(description = "ID du producteur", required = true)
+            @PathVariable int producteurId,
+            @Parameter(description = "Filtrer par statut de paiement (optionnel)")
+            @RequestParam(required = false) StatutPaiement statut) {
+        List<Paiement> paiements = paiementService.getPaiementsRecusParProducteur(producteurId, statut);
+        List<PaiementSimpleDTO> paiementDtos = paiements.stream()
+                .map(paiement -> new PaiementSimpleDTO(
+                        paiement.getIdPaiement(),
+                        paiement.getMontant(),
+                        paiement.getDatePaiement(),
+                        paiement.getMethodePaiement(),
+                        paiement.getStatutPaiement()
+                ))
+                .toList();
+        return ResponseEntity.ok(paiementDtos);
+    }
+    
     @GetMapping(path = "/{producteurId}/ventes")
     @Operation(
             summary = "Historique des ventes d'un producteur",
@@ -259,7 +393,7 @@ public class ProducteurController {
             @ApiResponse(responseCode = "200", description = "Produits trouvés"),
             @ApiResponse(responseCode = "400", description = "Terme de recherche invalide")
     })
-    public ResponseEntity<List<Produit>> rechercherProduits(
+    public ResponseEntity<List<ProduitResponseDTO>> rechercherProduits(
             @Parameter(description = "ID du producteur", required = true)
             @PathVariable int producteurId,
             @Parameter(description = "Terme de recherche", required = true)
@@ -269,8 +403,9 @@ public class ProducteurController {
         }
         List<Produit> produits = produitService.filtrerProduitsParNom(nom);
         // Filtrer pour ne retourner que les produits de ce producteur
-        List<Produit> produitsDuProducteur = produits.stream()
+        List<ProduitResponseDTO> produitsDuProducteur = produits.stream()
                 .filter(produit -> produit.getProducteur().getId() == producteurId)
+                .map(ProduitMapper::toDto)
                 .toList();
         return ResponseEntity.ok(produitsDuProducteur);
     }
@@ -296,6 +431,7 @@ public class ProducteurController {
             @RequestPart(value = "prixUnitaire", required = false) String prixUnitaire,
             @RequestPart(value = "unite", required = false) String unite,
             @RequestPart(value = "quantite", required = false) String quantite,
+            @RequestPart(value = "estBio", required = false) String estBio,
             @Parameter(
                     description = "Nouvelles photos du produit (optionnel, maximum 4). Pour plusieurs fichiers, sélectionnez ce champ plusieurs fois.",
                     content = @Content(mediaType = "multipart/form-data")
@@ -312,6 +448,7 @@ public class ProducteurController {
             if (prixUnitaire != null) produitModifie.setPrixUnitaire(Float.parseFloat(prixUnitaire));
             if (unite != null) produitModifie.setUnite(odk.SuguConnect.Enums.Unite.valueOf(unite.toUpperCase()));
             if (quantite != null) produitModifie.setQuantite(Integer.parseInt(quantite));
+            if (estBio != null && !estBio.isEmpty()) produitModifie.setEstBio(Boolean.parseBoolean(estBio));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body("Format de données invalide: " + e.getMessage());
         }
@@ -382,5 +519,17 @@ public class ProducteurController {
 
         Commande commande = commandeService.changerStatutCommande(commandeId, producteurId, nouveauStatut, motifRejet);
         return ResponseEntity.ok(commande);
+    }
+    
+    // Endpoint pour supprimer tous les produits - utilisé uniquement pour les tests
+    @DeleteMapping(path = "/test/supprimer-tous-produits")
+    @Operation(
+            summary = "Supprimer tous les produits (TEST SEULEMENT)",
+            description = "Permet de supprimer tous les produits de la base de données. UTILISÉ UNIQUEMENT POUR LES TESTS !",
+            hidden = true
+    )
+    public ResponseEntity<String> supprimerTousLesProduitsPourTest() {
+        String message = produitService.supprimerTousLesProduits();
+        return ResponseEntity.ok(message);
     }
 }

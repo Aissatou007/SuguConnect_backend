@@ -12,4 +12,7 @@ public interface ProduitRepository extends JpaRepository<Produit, Integer> {
     List<Produit> findAllByStockDisponibleGreaterThan(int stock);
     List<Produit> findByCategorieId(int id);
     List<Produit> findByNomContainingIgnoreCase(String nom);
+    
+    // Méthode pour récupérer les produits d'un producteur dans une catégorie spécifique
+    List<Produit> findByProducteurIdAndCategorieId(int producteurId, int categorieId);
 }

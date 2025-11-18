@@ -67,6 +67,18 @@ public class CommandeService {
                         .anyMatch(cp -> cp.getProduit().getProducteur().getId() == producteurId))
                 .toList();
     }
+    
+    /**
+     * Récupère toutes les commandes pour un producteur spécifique avec des filtres optionnels
+     */
+    public List<Commande> getCommandesParProducteur(int producteurId, StatutCommande statut) {
+        return commandeRepository.findAll().stream()
+                .filter(cmd -> cmd.getCommandeProduits().stream()
+                        .anyMatch(cp -> cp.getProduit().getProducteur().getId() == producteurId))
+                .filter(cmd -> statut == null || cmd.getStatutCommande() == statut)
+                .toList();
+    }
+    
     public int countCommandesParConsommateur(Long consommateurId) {
         return commandeRepository.countByConsommateurId(consommateurId); // méthode JPA
     }
@@ -154,7 +166,10 @@ public class CommandeService {
     
     private Panier validerPanier(Consommateur consommateur) {
         Panier panier = consommateur.getPanier();
-        if (panier == null || panier.getPanierProduits().isEmpty()) {
+        if (panier == null) {
+            throw new EntityNotFoundException("Panier non trouvé. Veuillez d'abord créer un panier.");
+        }
+        if (panier.getPanierProduits() == null || panier.getPanierProduits().isEmpty()) {
             throw new EntityNotFoundException("Panier vide. Veuillez d'abord ajouter des produits à votre panier.");
         }
         return panier;
@@ -172,7 +187,26 @@ public class CommandeService {
     private double traiterProduitsSpecifiquesDuPanier(List<ProduitCommandeDTO> produits, Commande commande, Panier panier) {
         double total = 0.0;
         
+        // Validate input
+        if (produits == null || produits.isEmpty()) {
+            throw new IllegalArgumentException("La liste des produits à commander ne peut pas être vide");
+        }
+        
+        if (panier.getPanierProduits() == null || panier.getPanierProduits().isEmpty()) {
+            throw new EntityNotFoundException("Le panier est vide. Veuillez ajouter des produits avant de passer une commande.");
+        }
+        
         for (ProduitCommandeDTO produitDTO : produits) {
+            // Validate product DTO
+            if (produitDTO == null) {
+                throw new IllegalArgumentException("Un des produits dans la liste est invalide");
+            }
+            
+            if (produitDTO.quantite() <= 0) {
+                throw new IllegalArgumentException(
+                    String.format("La quantité pour le produit ID %d doit être supérieure à zéro", produitDTO.produitId()));
+            }
+            
             // Trouver le produit dans le panier
             PanierProduit panierProduit = trouverProduitDansPanier(panier, produitDTO.produitId());
             int quantite = produitDTO.quantite();
@@ -181,12 +215,17 @@ public class CommandeService {
             if (quantite > panierProduit.getQuantite()) {
                 throw new IllegalArgumentException(
                     String.format("Quantité demandée (%d) supérieure à la quantité dans le panier (%d) pour le produit %s",
-                        quantite, panierProduit.getQuantite(), panierProduit.getProduit().getNom())
+                        quantite, panierProduit.getQuantite(), 
+                        panierProduit.getProduit() != null ? panierProduit.getProduit().getNom() : "Inconnu")
                 );
             }
             
             // Vérifier et réduire le stock
             Produit produit = panierProduit.getProduit();
+            if (produit == null) {
+                throw new EntityNotFoundException("Produit introuvable dans le panier");
+            }
+            
             verifierEtReduireStock(produit, quantite);
             
             // Créer l'article de commande
@@ -220,10 +259,15 @@ public class CommandeService {
     }
     
     private void verifierEtReduireStock(Produit produit, int quantite) {
+        if (produit == null) {
+            throw new EntityNotFoundException("Produit introuvable");
+        }
+        
         if (produit.getStockDisponible() < quantite) {
             throw new IllegalArgumentException(
                 String.format("Stock insuffisant pour %s. Disponible: %d, Demandé: %d",
-                    produit.getNom(), produit.getStockDisponible(), quantite)
+                    produit.getNom() != null ? produit.getNom() : "Produit inconnu", 
+                    produit.getStockDisponible(), quantite)
             );
         }
         produit.setStockDisponible(produit.getStockDisponible() - quantite);
@@ -254,10 +298,15 @@ public class CommandeService {
     }
     
     private PanierProduit trouverProduitDansPanier(Panier panier, int produitId) {
+        if (panier.getPanierProduits() == null || panier.getPanierProduits().isEmpty()) {
+            throw new EntityNotFoundException("Aucun produit trouvé dans le panier");
+        }
+        
         return panier.getPanierProduits().stream()
-                .filter(pp -> pp.getProduit().getId() == produitId)
+                .filter(pp -> pp.getProduit() != null && pp.getProduit().getId() == produitId)
                 .findFirst()
-                .orElseThrow(() -> new EntityNotFoundException("Produit introuvable dans le panier"));
+                .orElseThrow(() -> new EntityNotFoundException(
+                    String.format("Produit avec ID %d introuvable dans le panier. Veuillez vérifier que le produit est bien ajouté au panier.", produitId)));
     }
     
     private Paiement creerPaiement(Commande commande, ModePaiement modePaiement, double montant) {

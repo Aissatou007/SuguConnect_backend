@@ -16,7 +16,7 @@ public record PasserCommandePanierDTO(
         @Schema(
                 description = "Mode de paiement choisi",
                 example = "ORANGE_MONEY",
-                allowableValues = {"ORANGE_MONEY", "WAVE", "ESPECES"}
+                allowableValues = {"ORANGE_MONEY", "MOOV_MONEY", "WAVE", "ESPECES"}
         )
         ModePaiement modePaiement
 ) {

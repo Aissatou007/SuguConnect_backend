@@ -4,10 +4,12 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import odk.SuguConnect.Entity.Commande;
 import odk.SuguConnect.Entity.Paiement;
+import odk.SuguConnect.Entity.Produit;
 import odk.SuguConnect.Enums.StatutCommande;
 import odk.SuguConnect.Enums.StatutPaiement;
 import odk.SuguConnect.Repository.CommandeRepository;
 import odk.SuguConnect.Repository.PaiementRepository;
+import odk.SuguConnect.Repository.ProduitRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,7 +22,8 @@ public class PaiementService {
     private final PaiementRepository paiementRepository;
     private final CommandeRepository commandeRepository;
     private final NotificationService notificationService;
-
+    private final ProduitRepository produitRepository; // Added for producteur payments
+    
     public List<Paiement> recupererTousLesPaiements() {
         return paiementRepository.findAll();
     }
@@ -163,6 +166,30 @@ public class PaiementService {
         paiementRepository.save(paiement);
     }
 
+    /**
+     * Récupère tous les paiements reçus par un producteur
+     * (paiements des commandes contenant des produits de ce producteur)
+     */
+    public List<Paiement> getPaiementsRecusParProducteur(int producteurId) {
+        // Récupérer tous les paiements des commandes contenant au moins un produit du producteur
+        return paiementRepository.findAll().stream()
+                .filter(paiement -> paiement.getCommande() != null)
+                .filter(paiement -> paiement.getCommande().getCommandeProduits().stream()
+                        .anyMatch(cp -> cp.getProduit().getProducteur().getId() == producteurId))
+                .toList();
+    }
+    
+    /**
+     * Récupère tous les paiements reçus par un producteur avec un filtre de statut
+     */
+    public List<Paiement> getPaiementsRecusParProducteur(int producteurId, StatutPaiement statut) {
+        return paiementRepository.findAll().stream()
+                .filter(paiement -> paiement.getCommande() != null)
+                .filter(paiement -> paiement.getCommande().getCommandeProduits().stream()
+                        .anyMatch(cp -> cp.getProduit().getProducteur().getId() == producteurId))
+                .filter(paiement -> statut == null || paiement.getStatutPaiement() == statut)
+                .toList();
+    }
     
     private Paiement findPaiementById(int id) {
         return paiementRepository.findById(id)

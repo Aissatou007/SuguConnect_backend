@@ -36,28 +36,33 @@ public class FileStorageService {
     }
 
     public String storeFile(MultipartFile file) {
+        System.out.println("Début de l'enregistrement du fichier: " + file.getOriginalFilename());
 
         String originalFileName = StringUtils.cleanPath(file.getOriginalFilename());
         
         try {
-
             if(originalFileName.contains("..")) {
                 throw new RuntimeException("Le nom du fichier contient une séquence de chemin invalide " + originalFileName);
             }
-
 
             String fileExtension = "";
             if(originalFileName.contains(".")) {
                 fileExtension = originalFileName.substring(originalFileName.lastIndexOf("."));
             }
             String newFileName = UUID.randomUUID().toString() + fileExtension;
+            System.out.println("Nouveau nom de fichier généré: " + newFileName);
 
             // Copier le fichier vers l'emplacement cible
             Path targetLocation = this.fileStorageLocation.resolve(newFileName);
+            System.out.println("Chemin cible: " + targetLocation.toString());
+            
             Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
+            System.out.println("Fichier copié avec succès");
 
             return newFileName;
         } catch (IOException ex) {
+            System.err.println("Erreur lors de l'enregistrement du fichier " + originalFileName + ": " + ex.getMessage());
+            ex.printStackTrace();
             throw new RuntimeException("Impossible de stocker le fichier " + originalFileName + ". Veuillez réessayer!", ex);
         }
     }

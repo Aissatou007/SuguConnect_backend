@@ -6,7 +6,7 @@
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>3.5.6</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<relativePath/>
 	</parent>
 	<groupId>odk</groupId>
 	<artifactId>SuguConnect</artifactId>
@@ -48,9 +48,14 @@
 			<scope>runtime</scope>
 		</dependency>
 		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
-			<version>1.18.32</version> <!-- ou la dernière version -->
+			<version>1.18.32</version>
 			<scope>provided</scope>
 		</dependency>
 		<dependency>

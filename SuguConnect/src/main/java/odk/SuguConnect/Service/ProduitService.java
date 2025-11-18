@@ -8,6 +8,8 @@ import odk.SuguConnect.Enums.StatutProducteur;
 import odk.SuguConnect.Repository.CategorieRepository;
 import odk.SuguConnect.Repository.ProducteurRepository;
 import odk.SuguConnect.Repository.ProduitRepository;
+import odk.SuguConnect.DTO.Responses.ProduitsParCategorieDTO;
+import odk.SuguConnect.DTO.Responses.ProduitSimpleDTO;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
@@ -40,33 +42,160 @@ public class ProduitService {
         this.categorieRepository = categorieRepository;
     }
 
-    public Produit ajouterProduit(Produit produit , int producteurId){
-        // Valider le nom du produit
+    public Produit ajouterProduit(Produit produit, int producteurId) {
+        // Validation des champs obligatoires
+        if (produit.getNom() == null || produit.getNom().trim().isEmpty()) {
+            throw new IllegalArgumentException("Le nom du produit est obligatoire");
+        }
+        
+        if (produit.getDescription() == null || produit.getDescription().trim().isEmpty()) {
+            throw new IllegalArgumentException("La description du produit est obligatoire");
+        }
+        
+        if (produit.getPrixUnitaire() <= 0) {
+            throw new IllegalArgumentException("Le prix unitaire doit être supérieur à zéro");
+        }
+        
+        if (produit.getQuantite() <= 0) {
+            throw new IllegalArgumentException("La quantité doit être supérieure à zéro");
+        }
+        
+        if (produit.getUnite() == null) {
+            throw new IllegalArgumentException("L'unité de mesure est obligatoire");
+        }
+        
+        if (produit.getCategorie() == null || produit.getCategorie().getId() <= 0) {
+            throw new IllegalArgumentException("La catégorie est obligatoire");
+        }
+        
+        // Validation du champ estBio (obligatoire)
+        // Note: No need to validate estBio as it's a boolean with a default value in the entity
+        
+        if (produit.getPhotos() == null || produit.getPhotos().isEmpty()) {
+            throw new IllegalArgumentException("Au moins une photo est requise");
+        }
+        
+        if (produit.getPhotos().size() > 4) {
+            throw new IllegalArgumentException("Maximum 4 photos autorisées");
+        }
+        
+        // Validation du nom du produit
         validerNomProduit(produit.getNom());
         
+        // Associer le producteur
         Producteur producteur = producteurRepository.findById(producteurId)
-                .orElseThrow(() -> new EntityNotFoundException("Ce producteur n'existe pas"));
-        if(producteur.getStatutProducteur() != StatutProducteur.ACCEPTE){
-            throw new IllegalStateException("Vous n'avez pas de droit pour ajouter un produit");
-        }
-        if(produit.getPhotos() == null || produit.getPhotos().isEmpty()){
-            throw new IllegalArgumentException("Le produit doit contenir au moins une photo");
-        }
-        if(produit.getPhotos().size() > 4){
-            throw new IllegalArgumentException("Le produit ne peut pas avoir plus de 4 photos");
-        }
-        
-        // Vérifier et associer la catégorie si fournie
-        if(produit.getCategorie() != null && produit.getCategorie().getId() > 0) {
-            Categorie categorie = categorieRepository.findById(produit.getCategorie().getId())
-                    .orElseThrow(() -> new EntityNotFoundException("Cette catégorie n'existe pas"));
-            produit.setCategorie(categorie);
-        }
-        
+                .orElseThrow(() -> new EntityNotFoundException("Producteur introuvable"));
         produit.setProducteur(producteur);
+        
+        // Associer la catégorie
+        Categorie categorie = categorieRepository.findById(produit.getCategorie().getId())
+                .orElseThrow(() -> new EntityNotFoundException("Catégorie introuvable"));
+        produit.setCategorie(categorie);
+        
+        // Initialiser le stock disponible
         produit.setStockDisponible(produit.getQuantite());
-        produitRepository.save(produit);
-        return produit;
+        
+        return produitRepository.save(produit);
+    }
+    
+    /**
+     * Ajoute un produit avec un processus amélioré permettant de choisir d'abord la catégorie
+     * puis de sélectionner ou entrer le nom du produit
+     */
+    public Produit ajouterProduitAmeliore(Produit produit, int producteurId, int categorieId) {
+        // Validation des champs obligatoires
+        if (produit.getNom() == null || produit.getNom().trim().isEmpty()) {
+            throw new IllegalArgumentException("Le nom du produit est obligatoire");
+        }
+        
+        if (produit.getDescription() == null || produit.getDescription().trim().isEmpty()) {
+            throw new IllegalArgumentException("La description du produit est obligatoire");
+        }
+        
+        if (produit.getPrixUnitaire() <= 0) {
+            throw new IllegalArgumentException("Le prix unitaire doit être supérieur à zéro");
+        }
+        
+        if (produit.getQuantite() <= 0) {
+            throw new IllegalArgumentException("La quantité doit être supérieure à zéro");
+        }
+        
+        if (produit.getUnite() == null) {
+            throw new IllegalArgumentException("L'unité de mesure est obligatoire");
+        }
+        
+        // Validation du champ estBio (obligatoire)
+        // Note: No need to validate estBio as it's a boolean with a default value in the entity
+        
+        if (produit.getPhotos() == null || produit.getPhotos().isEmpty()) {
+            throw new IllegalArgumentException("Au moins une photo est requise");
+        }
+        
+        if (produit.getPhotos().size() > 4) {
+            throw new IllegalArgumentException("Maximum 4 photos autorisées");
+        }
+        
+        // Validation du nom du produit
+        validerNomProduit(produit.getNom());
+        
+        // Associer le producteur
+        Producteur producteur = producteurRepository.findById(producteurId)
+                .orElseThrow(() -> new EntityNotFoundException("Producteur introuvable"));
+        produit.setProducteur(producteur);
+        
+        // Associer la catégorie
+        Categorie categorie = categorieRepository.findById(categorieId)
+                .orElseThrow(() -> new EntityNotFoundException("Catégorie introuvable"));
+        produit.setCategorie(categorie);
+        
+        // Initialiser le stock disponible
+        produit.setStockDisponible(produit.getQuantite());
+        
+        return produitRepository.save(produit);
+    }
+    
+    /**
+     * Récupère les produits existants dans une catégorie pour permettre
+     * au producteur de choisir parmi eux lors de la création
+     */
+    public ProduitsParCategorieDTO getProduitsParCategorie(int categorieId) {
+        Categorie categorie = categorieRepository.findById(categorieId)
+                .orElseThrow(() -> new EntityNotFoundException("Cette catégorie n'existe pas"));
+        
+        List<Produit> produits = produitRepository.findByCategorieId(categorieId);
+        List<ProduitSimpleDTO> produitDtos = produits.stream()
+                .map(produit -> new ProduitSimpleDTO(
+                        produit.getId(),
+                        produit.getNom(),
+                        produit.getPrixUnitaire(),
+                        produit.getProducteur() != null ? produit.getProducteur().getId() : 0,
+                        produit.getProducteur() != null ? produit.getProducteur().getNom() : "",
+                        produit.getProducteur() != null ? produit.getProducteur().getPrenom() : ""
+                ))
+                .toList();
+        
+        return new ProduitsParCategorieDTO(
+                categorie.getId(),
+                categorie.getLibelle(),
+                produitDtos
+        );
+    }
+    
+    /**
+     * Récupère tous les produits existants d'un producteur pour une catégorie spécifique
+     */
+    public List<ProduitSimpleDTO> getProduitsDuProducteurParCategorie(int producteurId, int categorieId) {
+        List<Produit> produits = produitRepository.findByProducteurIdAndCategorieId(producteurId, categorieId);
+        return produits.stream()
+                .map(produit -> new ProduitSimpleDTO(
+                        produit.getId(),
+                        produit.getNom(),
+                        produit.getPrixUnitaire(),
+                        produit.getProducteur() != null ? produit.getProducteur().getId() : 0,
+                        produit.getProducteur() != null ? produit.getProducteur().getNom() : "",
+                        produit.getProducteur() != null ? produit.getProducteur().getPrenom() : ""
+                ))
+                .toList();
     }
     
     public Produit modifierProduit(Produit produitModifie , int produitId , int producteurId){
@@ -96,6 +225,8 @@ public class ProduitService {
             produit.setQuantite(produitModifie.getQuantite());
             produit.setStockDisponible(produitModifie.getQuantite());
         }
+        // Mettre à jour le champ estBio si fourni
+        produit.setEstBio(produitModifie.isEstBio());
         // Mettre à jour les photos uniquement si elles sont fournies
         if(produitModifie.getPhotos() != null && !produitModifie.getPhotos().isEmpty()) {
             if(produitModifie.getPhotos().size() > 4){
@@ -133,7 +264,12 @@ public class ProduitService {
         } produitRepository.delete(produit);
         return "Le produit a été supprimé";
     }
-
+    public String supprimerTousLesProduits() {
+        long count = produitRepository.count();
+        produitRepository.deleteAll();
+        return count + " produits ont été supprimés";
+    }
+    
     private void validerNomProduit(String nomProduit) {
         if (nomProduit == null || nomProduit.trim().isEmpty()) {
             throw new IllegalArgumentException("Le nom du produit ne peut pas être vide");

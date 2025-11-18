@@ -27,6 +27,8 @@ public class Produit {
     private float prixUnitaire ;
     private Unite unite ;
     private int stockDisponible ;
+    private boolean estBio = false; // Par défaut, le produit n'est pas bio
+    
     @ElementCollection
     @CollectionTable(name = "produit_photos", joinColumns = @JoinColumn(name = "produit_id"))
     @Column(name = "photo_url")
@@ -45,4 +47,9 @@ public class Produit {
     private List<Consommateur> consommateurs;
     @OneToMany(mappedBy = "produit" , cascade = CascadeType.ALL)
     private List<PanierProduit> panierProduits ;
+    
+    // Méthode pour obtenir le texte indiquant si le produit est bio ou non
+    public String getTexteBio() {
+        return estBio ? "produit 100% bio" : "produit non bio";
+    }
 }

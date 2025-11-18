@@ -8,6 +8,7 @@ import odk.SuguConnect.Repository.ProduitRepository;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -19,7 +20,7 @@ public class CategorieService {
     private final ProduitRepository produitRepository;
     private final FileStorageService fileStorageService;
 
-    public CategorieService(CategorieRepository categorieRepository, ProduitService produitService, ProduitRepository produitRepository, FileStorageService fileStorageService) {
+    public CategorieService(CategorieRepository categorieRepository, ProduitRepository produitRepository, FileStorageService fileStorageService) {
         this.categorieRepository = categorieRepository;
         this.produitRepository = produitRepository;
         this.fileStorageService = fileStorageService;
@@ -46,11 +47,36 @@ public class CategorieService {
         
         // Handle photo upload if provided
         if (photo != null && !photo.isEmpty()) {
-            String fileName = fileStorageService.storeFile(photo);
-            categorie.setPhotoUrl(fileName);
+            try {
+                System.out.println("Tentative d'upload de la photo: " + photo.getOriginalFilename());
+                String fileName = fileStorageService.storeFile(photo);
+                System.out.println("Fichier enregistré avec le nom: " + fileName);
+                
+                String fileDownloadUri = ServletUriComponentsBuilder.fromCurrentContextPath()
+                        .path("/suguconnect/files/download/")
+                        .path(fileName)
+                        .toUriString();
+                System.out.println("URL de téléchargement construite: " + fileDownloadUri);
+                
+                categorie.setPhotoUrl(fileDownloadUri);
+                System.out.println("Photo URL définie dans la catégorie: " + categorie.getPhotoUrl());
+            } catch (Exception e) {
+                System.err.println("Erreur lors du téléchargement de la photo : " + e.getMessage());
+                e.printStackTrace();
+                // Continue with category creation even if photo upload fails
+            }
+        } else {
+            System.out.println("Aucune photo fournie ou photo vide");
         }
 
-        return categorieRepository.save(categorie);
+        System.out.println("Enregistrement de la catégorie: " + categorie.getLibelle());
+        Categorie savedCategorie = categorieRepository.save(categorie);
+        System.out.println("Catégorie enregistrée avec ID: " + savedCategorie.getId());
+        if (savedCategorie.getPhotoUrl() != null) {
+            System.out.println("Photo URL de la catégorie enregistrée: " + savedCategorie.getPhotoUrl());
+        }
+        
+        return savedCategorie;
     }
     public Categorie modifierCategorie(int idCategorie , Categorie categorie){
         Categorie categorieaModifier = categorieRepository.findById(idCategorie)
