@@ -10,14 +10,19 @@ import odk.SuguConnect.DTO.Request.ConsommateurRequestDTO;
 import odk.SuguConnect.DTO.Request.PasserCommandeRequestDTO;
 import odk.SuguConnect.DTO.Responses.ConsommateurResponseDTO;
 import odk.SuguConnect.Entity.Commande;
+import odk.SuguConnect.Entity.Consommateur;
 import odk.SuguConnect.Entity.Panier;
 import odk.SuguConnect.Entity.Produit;
 import odk.SuguConnect.Enums.ModePaiement;
+import odk.SuguConnect.Interface.Utilisateur;
 import odk.SuguConnect.Mapper.CommandeMapper;
 import odk.SuguConnect.Service.CommandeService;
 import odk.SuguConnect.Service.ConsommateurService;
 import odk.SuguConnect.Service.PanierService;
+import odk.SuguConnect.Service.ProduitService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -31,6 +36,7 @@ public class ConsommateurController {
     private final ConsommateurService consommateurService;
     private final CommandeService commandeService;
     private final PanierService panierService;
+    private final ProduitService produitService;
 
     @PostMapping(path = "/inscription")
     @Operation(
@@ -123,7 +129,23 @@ public class ConsommateurController {
     public ResponseEntity<List<Produit>> voirProduitsDisponibles() {
         return ResponseEntity.ok(consommateurService.voirTousLesProduitsDisponibles());
     }
-    
+
+    @GetMapping(path = "/produits/categorie/{categorieId}")
+    @Operation(
+            summary = "Récupérer les produits par catégorie",
+            description = "Retourne la liste des produits d'une catégorie spécifique"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Liste des produits récupérée"),
+            @ApiResponse(responseCode = "404", description = "Catégorie non trouvée")
+    })
+    public ResponseEntity<List<Produit>> getProduitsParCategorie(
+            @Parameter(description = "ID de la catégorie", required = true)
+            @PathVariable int categorieId) {
+        List<Produit> produits = produitService.getProduitsParCategorie(categorieId);
+        return ResponseEntity.ok(produits);
+    }
+
     @GetMapping(path = "/produits/recherche")
     @Operation(
             summary = "Rechercher des produits par nom",
@@ -225,13 +247,23 @@ public class ConsommateurController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Commande passée avec succès"),
             @ApiResponse(responseCode = "400", description = "Panier vide ou stock insuffisant"),
+            @ApiResponse(responseCode = "403", description = "Non autorisé"),
             @ApiResponse(responseCode = "404", description = "Consommateur non trouvé")
     })
     public ResponseEntity<odk.SuguConnect.DTO.Responses.CommandeResponseDTO> passerCommande(
             @Parameter(description = "ID du consommateur", required = true)
             @PathVariable int idConsommateur,
             @Parameter(description = "Mode de paiement choisi", required = true)
-            @RequestParam ModePaiement modePaiement) {
+            @RequestParam ModePaiement modePaiement,
+            Authentication authentication) {
+        
+        // Vérifier que l'utilisateur authentifié est bien le consommateur concerné ou un administrateur
+        String telephone = authentication.getName();
+        Consommateur consommateur = consommateurService.findByTelephone(telephone);
+        if (!consommateur.getRole().name().equals("ADMIN") && consommateur.getId() != idConsommateur) {
+            throw new SecurityException("Vous n'êtes pas autorisé à passer une commande pour ce consommateur");
+        }
+        
         Commande commande = commandeService.passerCommande(idConsommateur, modePaiement);
         return ResponseEntity.ok(CommandeMapper.toResponse(commande));
     }
@@ -244,6 +276,7 @@ public class ConsommateurController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Commande passée avec succès"),
             @ApiResponse(responseCode = "400", description = "Stock insuffisant ou données invalides"),
+            @ApiResponse(responseCode = "403", description = "Non autorisé"),
             @ApiResponse(responseCode = "404", description = "Consommateur ou produit non trouvé")
     })
     public ResponseEntity<odk.SuguConnect.DTO.Responses.CommandeResponseDTO> passerCommandeDirecte(
@@ -252,7 +285,16 @@ public class ConsommateurController {
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "Produits à commander et mode de paiement"
             )
-            @RequestBody PasserCommandeRequestDTO request) {
+            @RequestBody PasserCommandeRequestDTO request,
+            Authentication authentication) {
+        
+        // Vérifier que l'utilisateur authentifié est bien le consommateur concerné ou un administrateur
+        String telephone = authentication.getName();
+        Consommateur consommateur = consommateurService.findByTelephone(telephone);
+        if (!consommateur.getRole().name().equals("ADMIN") && consommateur.getId() != idConsommateur) {
+            throw new SecurityException("Vous n'êtes pas autorisé à passer une commande pour ce consommateur");
+        }
+        
         Commande commande = commandeService.passerCommandeAvecProduits(idConsommateur, request);
         return ResponseEntity.ok(CommandeMapper.toResponse(commande));
     }
@@ -288,7 +330,15 @@ public class ConsommateurController {
             @Parameter(description = "ID de la commande", required = true)
             @PathVariable int commandeId,
             @Parameter(description = "ID du consommateur", required = true)
-            @RequestParam int consommateurId) {
+            @RequestParam int consommateurId,
+            Authentication authentication) {
+        
+        // Vérifier que l'utilisateur authentifié est bien le consommateur concerné ou un administrateur
+        String telephone = authentication.getName();
+        Consommateur consommateur = consommateurService.findByTelephone(telephone);
+        if (!consommateur.getRole().name().equals("ADMIN") && consommateur.getId() != consommateurId) {
+            throw new SecurityException("Vous n'êtes pas autorisé à valider cette commande");
+        }
         
         Commande commande = commandeService.validerReceptionCommande(commandeId, consommateurId);
         return ResponseEntity.ok(CommandeMapper.toResponse(commande));

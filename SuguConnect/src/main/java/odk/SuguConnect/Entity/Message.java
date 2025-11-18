@@ -5,10 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import odk.SuguConnect.Enums.TypeMessage;
-import odk.SuguConnect.Entity.Consommateur;
-import odk.SuguConnect.Entity.Producteur;
-import odk.SuguConnect.Entity.Conversation;
+import odk.SuguConnect.Interface.Utilisateur;
 
 import java.time.LocalDateTime;
 
@@ -20,37 +17,34 @@ import java.time.LocalDateTime;
 public class Message {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private int idMessage;
+    
+    @ManyToOne
+    @JoinColumn(name = "sender_id")
+    private Utilisateur sender;
+    
+    @ManyToOne
+    @JoinColumn(name = "receiver_id")
+    private Utilisateur receiver;
     
     @Column(length = 1000)
-    private String contenu;
+    private String content;
     
     @Enumerated(EnumType.STRING)
-    private TypeMessage typeMessage;
+    private MessageType type;
     
-    private LocalDateTime dateEnvoi;
+    private LocalDateTime timestamp;
     
-    private String cheminFichier; // Pour les images, vocaux et documents
+    private boolean isRead;
     
-    // Expéditeur du message (consommateur)
-    @ManyToOne
-    @JoinColumn(name = "expediteur_id")
-    private Consommateur expediteur;
+    private String filePath;
     
-    // Destinataire du message (producteur)
-    @ManyToOne
-    @JoinColumn(name = "destinataire_id")
-    private Producteur destinataire;
-    
-    // Conversation à laquelle appartient le message
+    // Relation avec la conversation
     @ManyToOne
     @JoinColumn(name = "conversation_id")
     private Conversation conversation;
     
-    private boolean lu = false;
-    
-    @PrePersist
-    protected void onCreate() {
-        dateEnvoi = LocalDateTime.now();
+    public enum MessageType {
+        TEXT, VOICE, IMAGE, FILE
     }
 }

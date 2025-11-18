@@ -15,6 +15,7 @@ public interface ProduitRepository extends JpaRepository<Produit, Integer> {
     List<Produit> findAllByStockDisponibleGreaterThan(int stock);
     List<Produit> findByCategorieId(int id);
     List<Produit> findByNomContainingIgnoreCase(String nom);
+    List<Produit> findByCategorieAndStockDisponibleGreaterThan(Categorie categorie, int stock);
     
     @Query("SELECT new odk.SuguConnect.DTO.ProduitPopulaireDTO(" +
            "p.id, p.nom, p.description, p.prixUnitaire, " +

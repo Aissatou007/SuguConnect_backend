@@ -1,15 +1,23 @@
 package odk.SuguConnect.Controller;
 
-import odk.SuguConnect.Entity.Message;
-import odk.SuguConnect.Entity.Conversation;
-import odk.SuguConnect.Enums.TypeMessage;
-import odk.SuguConnect.Service.MessageService;
-import odk.SuguConnect.Service.ConversationService;
-import odk.SuguConnect.DTO.MessageDTO;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import odk.SuguConnect.DTO.ConversationDTO;
-import odk.SuguConnect.Mapper.MessageMapper;
+import odk.SuguConnect.DTO.MessageDTO;
+import odk.SuguConnect.Entity.Conversation;
+import odk.SuguConnect.Entity.Message;
+import odk.SuguConnect.Enums.TypeMessage;
 import odk.SuguConnect.Mapper.ConversationMapper;
+import odk.SuguConnect.Mapper.MessageMapper;
+import odk.SuguConnect.Service.ConversationService;
 import odk.SuguConnect.Service.FileStorageService;
+import odk.SuguConnect.Service.MessageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -18,25 +26,17 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.tags.Tag;
-
-import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/chat")
 @CrossOrigin(origins = "*")
 @Tag(name = "Chat", description = "API de messagerie entre consommateurs et producteurs")
+@Slf4j
 public class ChatController {
     
     @Autowired
@@ -78,20 +78,19 @@ public class ChatController {
     
     @Operation(
         summary = "Envoyer un message texte",
-        description = "Envoie un message texte dans une conversation existante."
+        description = "Envoie un message texte entre deux utilisateurs."
     )
     @ApiResponse(responseCode = "200", description = "Message envoyé avec succès", 
         content = @Content(mediaType = "application/json", 
         schema = @Schema(implementation = MessageDTO.class)))
     @PostMapping("/message/texte")
     public ResponseEntity<MessageDTO> envoyerMessageTexte(
-            @Parameter(description = "ID de la conversation") @RequestParam Long conversationId,
             @Parameter(description = "ID de l'expéditeur") @RequestParam Long expediteurId,
             @Parameter(description = "ID du destinataire") @RequestParam Long destinataireId,
             @Parameter(description = "Contenu du message") @RequestParam String contenu) {
         
-        Message message = messageService.creerMessage(
-                conversationId, expediteurId, destinataireId, contenu, TypeMessage.TEXTE, null);
+        Message message = messageService.sendMessage(
+                expediteurId.intValue(), destinataireId.intValue(), contenu, "TEXT");
         
         return ResponseEntity.ok(messageMapper.toDTO(message));
     }
@@ -153,37 +152,55 @@ public class ChatController {
     
     @Operation(
         summary = "Envoyer un message avec fichier",
-        description = "Envoie un message avec fichier (image, vocal, document) dans une conversation existante."
+        description = "Envoie un message avec fichier (image, vocal, document) entre deux utilisateurs."
     )
     @ApiResponse(responseCode = "200", description = "Message avec fichier envoyé avec succès", 
         content = @Content(mediaType = "application/json", 
         schema = @Schema(implementation = MessageDTO.class)))
     @PostMapping("/message/fichier")
     public ResponseEntity<MessageDTO> envoyerMessageFichier(
-            @Parameter(description = "ID de la conversation") @RequestParam Long conversationId,
             @Parameter(description = "ID de l'expéditeur") @RequestParam Long expediteurId,
             @Parameter(description = "ID du destinataire") @RequestParam Long destinataireId,
             @Parameter(description = "Contenu du message") @RequestParam String contenu,
             @Parameter(description = "Type du message (TEXTE, IMAGE, VOCAL, DOCUMENT)") @RequestParam TypeMessage typeMessage,
-            @Parameter(description = "Chemin du fichier") @RequestParam String cheminFichier) {
+            @Parameter(description = "Fichier") @RequestParam("file") MultipartFile file) {
         
-        Message message = messageService.creerMessage(
-                conversationId, expediteurId, destinataireId, contenu, typeMessage, cheminFichier);
-        
-        return ResponseEntity.ok(messageMapper.toDTO(message));
+        try {
+            Message message;
+            switch (typeMessage) {
+                case IMAGE:
+                    message = messageService.sendImage(expediteurId.intValue(), destinataireId.intValue(), file);
+                    break;
+                case VOCAL:
+                    message = messageService.sendVoiceMessage(expediteurId.intValue(), destinataireId.intValue(), file);
+                    break;
+                case DOCUMENT:
+                    message = messageService.sendFile(expediteurId.intValue(), destinataireId.intValue(), file);
+                    break;
+                default:
+                    message = messageService.sendMessage(expediteurId.intValue(), destinataireId.intValue(), contenu, "TEXT");
+                    break;
+            }
+            
+            return ResponseEntity.ok(messageMapper.toDTO(message));
+        } catch (Exception e) {
+            log.error("Erreur lors de l'envoi du message avec fichier", e);
+            return ResponseEntity.badRequest().build();
+        }
     }
     
     @Operation(
         summary = "Récupérer les messages d'une conversation",
-        description = "Récupère tous les messages d'une conversation spécifique, triés par date d'envoi."
+        description = "Récupère tous les messages entre deux utilisateurs, triés par date d'envoi."
     )
     @ApiResponse(responseCode = "200", description = "Messages récupérés avec succès", 
         content = @Content(mediaType = "application/json", 
         schema = @Schema(implementation = MessageDTO.class)))
-    @GetMapping("/messages/{conversationId}")
+    @GetMapping("/messages")
     public ResponseEntity<List<MessageDTO>> getMessages(
-            @Parameter(description = "ID de la conversation") @PathVariable Long conversationId) {
-        List<Message> messages = messageService.getMessagesByConversation(conversationId);
+            @Parameter(description = "ID du premier utilisateur") @RequestParam Long userId1,
+            @Parameter(description = "ID du second utilisateur") @RequestParam Long userId2) {
+        List<Message> messages = messageService.getConversation(userId1.intValue(), userId2.intValue());
         List<MessageDTO> messageDTOs = messages.stream()
                 .map(messageMapper::toDTO)
                 .collect(Collectors.toList());
@@ -235,7 +252,7 @@ public class ChatController {
     @PutMapping("/message/{messageId}/lu")
     public ResponseEntity<MessageDTO> marquerMessageCommeLu(
             @Parameter(description = "ID du message") @PathVariable Long messageId) {
-        Message message = messageService.marquerCommeLu(messageId);
+        Message message = messageService.markAsRead(messageId.intValue());
         if (message != null) {
             return ResponseEntity.ok(messageMapper.toDTO(message));
         } else {

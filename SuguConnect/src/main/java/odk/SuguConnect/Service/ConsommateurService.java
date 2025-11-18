@@ -94,6 +94,10 @@ public class ConsommateurService {
         return consommateurRepository.findById(id).orElse(null);
     }
 
+    public Consommateur findByTelephone(String telephone) {
+        return consommateurRepository.findByTelephone(telephone);
+    }
+
     private ConsommateurResponseDTO toResponseDTO(Consommateur consommateur) {
         ConsommateurResponseDTO dto = new ConsommateurResponseDTO();
         dto.setId(consommateur.getId());
