@@ -44,7 +44,7 @@ public class Conversation {
     private boolean active = true;
     
     // Messages de la conversation
-    @OneToMany(mappedBy = "conversation", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "conversation", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Message> messages;
     
     @PrePersist

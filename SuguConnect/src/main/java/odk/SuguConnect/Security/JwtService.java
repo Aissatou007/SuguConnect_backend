@@ -7,6 +7,7 @@ import io.jsonwebtoken.security.Keys;
 import odk.SuguConnect.Enums.Role;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
@@ -16,7 +17,12 @@ import java.util.function.Function;
 @Service
 public class JwtService {
 
-    private static final Key SECRET_KEY = Keys.secretKeyFor(SignatureAlgorithm.HS256);
+    // Clé secrète stable pour signer les JWT (à externaliser en variable d'environnement si besoin)
+    private static final String SECRET =
+            "CHANGE_ME_TO_A_LONG_RANDOM_SECRET_KEY_AT_LEAST_32_CHARS_LONG";
+
+    private static final Key SECRET_KEY =
+            Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
     private static final long JWT_EXPIRATION = 24 * 60 * 60 * 1000; // 24 heures
     
     /**

@@ -169,4 +169,17 @@ public class ProduitService {
         return produitRepository.findById(produitId)
                 .orElseThrow(() -> new EntityNotFoundException("Produit non trouvé avec l'ID: " + produitId));
     }
+    
+    /**
+     * Récupère les produits par catégorie
+     * @param categorieId ID de la catégorie
+     * @return Liste des produits de la catégorie
+     * @throws EntityNotFoundException si la catégorie n'existe pas
+     */
+    public List<Produit> getProduitsParCategorie(int categorieId) {
+        Categorie categorie = categorieRepository.findById(categorieId)
+                .orElseThrow(() -> new EntityNotFoundException("Catégorie non trouvée avec l'ID: " + categorieId));
+        return produitRepository.findByCategorieAndStockDisponibleGreaterThan(categorie, 0);
+    }
+
 }

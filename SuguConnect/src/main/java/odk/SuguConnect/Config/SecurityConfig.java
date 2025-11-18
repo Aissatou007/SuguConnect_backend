@@ -129,7 +129,7 @@ public class SecurityConfig {
                         // ============================================
                         // ENDPOINTS PAIEMENT (CONSOMMATEUR ou ADMIN)
                         // ============================================
-                        .requestMatchers("/api/paiements/**").hasAnyRole("CONSOMMATEUR", "ADMIN")
+                        .requestMatchers("/paiement/**").hasAnyRole("CONSOMMATEUR", "ADMIN")
                         
                         // ============================================
                         // ENDPOINTS NOTIFICATIONS (Utilisateurs authentifiés)
