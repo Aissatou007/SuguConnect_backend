@@ -4,10 +4,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
 import odk.SuguConnect.Entity.Message;
 import odk.SuguConnect.Service.MessageService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -15,16 +14,16 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Controller responsable de la gestion des messages de chat
- * Endpoints pour envoyer, recevoir et gérer les messages entre utilisateurs
- */
 @RestController
-@RequestMapping(path = "/messages")
-@RequiredArgsConstructor
-@Tag(name = "Message", description = "API de gestion des messages de chat")
+@RequestMapping("/messages")
+@CrossOrigin(origins = "*")
 public class MessageController {
     private final MessageService messageService;
+
+    @Autowired
+    public MessageController(MessageService messageService) {
+        this.messageService = messageService;
+    }
 
     @PostMapping
     @Operation(
@@ -40,14 +39,46 @@ public class MessageController {
             @RequestBody Map<String, Object> messageData) {
         
         try {
-            int senderId = (int) messageData.get("senderId");
-            int receiverId = (int) messageData.get("receiverId");
-            String content = (String) messageData.get("content");
-            String type = (String) messageData.getOrDefault("type", "TEXT");
+            System.out.println("=== Début sendMessage ===");
+            System.out.println("Données reçues: " + messageData);
+            
+            // Validation des données
+            if (messageData == null || messageData.isEmpty()) {
+                System.out.println("Données de message invalides: données vides");
+                return ResponseEntity.badRequest().build();
+            }
+            
+            Object senderIdObj = messageData.get("senderId");
+            Object receiverIdObj = messageData.get("receiverId");
+            Object contentObj = messageData.get("content");
+            Object typeObj = messageData.get("type");
+            
+            if (senderIdObj == null || receiverIdObj == null || contentObj == null) {
+                System.out.println("Données de message invalides: champs manquants");
+                System.out.println("senderId: " + senderIdObj);
+                System.out.println("receiverId: " + receiverIdObj);
+                System.out.println("content: " + contentObj);
+                return ResponseEntity.badRequest().build();
+            }
+            
+            int senderId = (int) senderIdObj;
+            int receiverId = (int) receiverIdObj;
+            String content = (String) contentObj;
+            String type = (String) (typeObj != null ? typeObj : "TEXT");
+            
+            System.out.println("senderId: " + senderId);
+            System.out.println("receiverId: " + receiverId);
+            System.out.println("content: " + content);
+            System.out.println("type: " + type);
             
             Message message = messageService.sendMessage(senderId, receiverId, content, type);
+            System.out.println("=== Fin sendMessage ===");
             return ResponseEntity.status(201).body(message);
         } catch (Exception e) {
+            System.out.println("=== ERREUR sendMessage ===");
+            System.out.println("Erreur: " + e.getMessage());
+            e.printStackTrace();
+            System.out.println("=== FIN ERREUR sendMessage ===");
             return ResponseEntity.badRequest().build();
         }
     }
@@ -143,9 +174,25 @@ public class MessageController {
             @RequestParam int userId2) {
         
         try {
+            System.out.println("=== Début getConversation ===");
+            System.out.println("userId1: " + userId1);
+            System.out.println("userId2: " + userId2);
+            
+            // Validation des paramètres
+            if (userId1 <= 0 || userId2 <= 0) {
+                System.out.println("Paramètres invalides: userId1=" + userId1 + ", userId2=" + userId2);
+                return ResponseEntity.badRequest().build();
+            }
+            
             List<Message> messages = messageService.getConversation(userId1, userId2);
+            System.out.println("Messages trouvés: " + messages.size());
+            System.out.println("=== Fin getConversation ===");
             return ResponseEntity.ok(messages);
         } catch (Exception e) {
+            System.out.println("=== ERREUR getConversation ===");
+            System.out.println("Erreur: " + e.getMessage());
+            e.printStackTrace();
+            System.out.println("=== FIN ERREUR getConversation ===");
             return ResponseEntity.badRequest().build();
         }
     }

@@ -31,20 +31,49 @@ public class MessageService {
 
     @Transactional
     public Message sendMessage(int senderId, int receiverId, String content, String type) {
-        // Vérifier que les utilisateurs existent
-        Utilisateur sender = findUserById(senderId);
-        Utilisateur receiver = findUserById(receiverId);
-        
-        // Créer le message
-        Message message = new Message();
-        message.setSender(sender);
-        message.setReceiver(receiver);
-        message.setContent(content);
-        message.setType(Message.MessageType.valueOf(type));
-        message.setTimestamp(LocalDateTime.now());
-        message.setRead(false);
-        
-        return messageRepository.save(message);
+        try {
+            System.out.println("=== Début sendMessage ===");
+            System.out.println("senderId: " + senderId);
+            System.out.println("receiverId: " + receiverId);
+            System.out.println("content: " + content);
+            System.out.println("type: " + type);
+            
+            // Vérifier que les utilisateurs existent
+            Utilisateur sender = findUserById(senderId);
+            Utilisateur receiver = findUserById(receiverId);
+            System.out.println("Expéditeur trouvé: " + sender.getClass().getSimpleName());
+            System.out.println("Destinataire trouvé: " + receiver.getClass().getSimpleName());
+            
+            // Valider le type de message
+            Message.MessageType messageType;
+            try {
+                messageType = Message.MessageType.valueOf(type.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                System.out.println("Type de message invalide, utilisation de TEXT par défaut");
+                messageType = Message.MessageType.TEXT;
+            }
+            System.out.println("Type de message: " + messageType);
+            
+            // Créer le message
+            Message message = new Message();
+            message.setSender(sender);
+            message.setReceiver(receiver);
+            message.setContent(content);
+            message.setType(messageType);
+            message.setTimestamp(LocalDateTime.now());
+            message.setRead(false);
+            
+            Message savedMessage = messageRepository.save(message);
+            System.out.println("Message sauvegardé avec ID: " + savedMessage.getIdMessage());
+            System.out.println("=== Fin sendMessage ===");
+            return savedMessage;
+        } catch (Exception e) {
+            System.out.println("=== ERREUR sendMessage ===");
+            System.out.println("Erreur: " + e.getMessage());
+            e.printStackTrace();
+            System.out.println("=== FIN ERREUR sendMessage ===");
+            throw e;
+        }
     }
 
     @Transactional
@@ -114,10 +143,28 @@ public class MessageService {
     }
 
     public List<Message> getConversation(int userId1, int userId2) {
-        Utilisateur user1 = findUserById(userId1);
-        Utilisateur user2 = findUserById(userId2);
-        
-        return messageRepository.findConversationBetweenUsers(user1, user2);
+        try {
+            System.out.println("=== Début getConversation (service) ===");
+            System.out.println("Recherche utilisateur 1 (ID: " + userId1 + ")");
+            Utilisateur user1 = findUserById(userId1);
+            System.out.println("Utilisateur 1 trouvé: " + user1.getClass().getSimpleName() + " - " + user1.getId());
+            
+            System.out.println("Recherche utilisateur 2 (ID: " + userId2 + ")");
+            Utilisateur user2 = findUserById(userId2);
+            System.out.println("Utilisateur 2 trouvé: " + user2.getClass().getSimpleName() + " - " + user2.getId());
+            
+            System.out.println("Recherche conversation dans le repository...");
+            List<Message> messages = messageRepository.findConversationBetweenUsers(user1, user2);
+            System.out.println("Conversation trouvée avec " + messages.size() + " messages");
+            System.out.println("=== Fin getConversation (service) ===");
+            return messages;
+        } catch (Exception e) {
+            System.out.println("=== ERREUR getConversation (service) ===");
+            System.out.println("Erreur: " + e.getMessage());
+            e.printStackTrace();
+            System.out.println("=== FIN ERREUR getConversation (service) ===");
+            throw e;
+        }
     }
 
     @Transactional
@@ -125,6 +172,15 @@ public class MessageService {
         Message message = findMessageById(messageId);
         message.setRead(true);
         return messageRepository.save(message);
+    }
+
+    public boolean userExists(int id) {
+        try {
+            Utilisateur user = findUserById(id);
+            return user != null;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     public long countUnreadMessages(int userId) {

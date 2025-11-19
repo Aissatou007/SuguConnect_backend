@@ -165,6 +165,22 @@ public class ConsommateurController {
         return ResponseEntity.ok(produits);
     }
 
+    @GetMapping(path = "/{idConsommateur}/panier")
+    @Operation(
+            summary = "Voir le panier",
+            description = "Retourne le contenu du panier d'un consommateur"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Panier récupéré"),
+            @ApiResponse(responseCode = "404", description = "Consommateur non trouvé ou panier vide")
+    })
+    public ResponseEntity<Panier> voirPanier(
+            @Parameter(description = "ID du consommateur", required = true)
+            @PathVariable int idConsommateur) {
+        Panier panier = panierService.voirPanier(idConsommateur);
+        return ResponseEntity.ok(panier);
+    }
+
     @PostMapping(path = "/{idConsommateur}/panier/ajouter/{idProduit}")
     @Operation(
             summary = "Ajouter un produit au panier",
@@ -202,22 +218,6 @@ public class ConsommateurController {
             @PathVariable int idProduit) {
         String message = panierService.retirerProduitDuPanier(idConsommateur, idProduit);
         return ResponseEntity.ok(message);
-    }
-
-    @GetMapping(path = "/{idConsommateur}/panier")
-    @Operation(
-            summary = "Voir le panier",
-            description = "Permet de consulter le contenu du panier d'un consommateur"
-    )
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Panier récupéré"),
-            @ApiResponse(responseCode = "404", description = "Panier vide ou consommateur non trouvé")
-    })
-    public ResponseEntity<Panier> voirPanier(
-            @Parameter(description = "ID du consommateur", required = true)
-            @PathVariable int idConsommateur) {
-        Panier panier = panierService.voirPanier(idConsommateur);
-        return ResponseEntity.ok(panier);
     }
 
     @GetMapping(path = "/{idConsommateur}/commandes")

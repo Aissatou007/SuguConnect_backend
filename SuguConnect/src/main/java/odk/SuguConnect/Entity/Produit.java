@@ -16,7 +16,7 @@ import java.util.List;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@JsonIgnoreProperties({"paniers", "consommateurs", "commandeProduitList", "panierProduits", "producteur"})
+@JsonIgnoreProperties({"paniers", "consommateurs", "commandeProduitList", "panierProduits", "producteur", "hibernateLazyInitializer", "handler"})
 public class Produit {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -33,16 +33,21 @@ public class Produit {
     private List<String> photos = new ArrayList<>();
     @ManyToOne
     @JoinColumn(name = "producteur_id")
+    @JsonIgnoreProperties({"produits", "panier", "commandes", "avisRecus", "avisDonnes"})
     private Producteur producteur;
     @ManyToOne
     @JoinColumn(name = "categorie_id")
     private Categorie categorie;
     @ManyToMany
+    @JsonIgnoreProperties({"produits", "consommateur"})
     private List<Panier> paniers ;
     @OneToMany(mappedBy = "produit")
+    @JsonIgnoreProperties({"produit"})
     private List<CommandeProduit>commandeProduitList ;
     @ManyToMany(mappedBy = "produit")
+    @JsonIgnoreProperties({"produits"})
     private List<Consommateur> consommateurs;
     @OneToMany(mappedBy = "produit" , cascade = CascadeType.ALL)
+    @JsonIgnoreProperties({"produit"})
     private List<PanierProduit> panierProduits ;
 }

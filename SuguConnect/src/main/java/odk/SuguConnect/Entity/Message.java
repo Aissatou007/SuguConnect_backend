@@ -35,7 +35,8 @@ public class Message {
     
     private LocalDateTime timestamp;
     
-    private boolean isRead;
+    @Column(name = "is_read", columnDefinition = "boolean default false")
+    private boolean isRead = false;
     
     private String filePath;
     
