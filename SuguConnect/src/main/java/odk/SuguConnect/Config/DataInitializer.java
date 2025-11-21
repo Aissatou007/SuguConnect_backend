@@ -58,8 +58,10 @@ public class DataInitializer {
             // 1. Créer l'admin par défaut
             initAdmin();
             
-            // 2. Supprimer les données de test existantes
-            clearTestData();
+            // 2. Initialiser les données de test
+            initCategories();
+            initProducteurs();
+            initProduits();
             
             System.out.println("✅ Initialisation des données de test terminée!");
         };
@@ -86,33 +88,8 @@ public class DataInitializer {
     }
     
     /**
-     * Supprime toutes les données de test existantes
+     * Initialise les catégories de test
      */
-    private void clearTestData() {
-        // Supprimer tous les produits
-        long produitCount = produitRepository.count();
-        if (produitCount > 0) {
-            produitRepository.deleteAll();
-            System.out.println("🗑️ " + produitCount + " produits supprimés!");
-        }
-        
-        // Supprimer tous les producteurs de test
-        long producteurCount = producteurRepository.count();
-        if (producteurCount > 0) {
-            producteurRepository.deleteAll();
-            System.out.println("🗑️ " + producteurCount + " producteurs supprimés!");
-        }
-        
-        // Supprimer toutes les catégories de test
-        long categorieCount = categorieRepository.count();
-        if (categorieCount > 0) {
-            categorieRepository.deleteAll();
-            System.out.println("🗑️ " + categorieCount + " catégories supprimées!");
-        }
-    }
-    
-    // Commenté: Ne plus créer de catégories par défaut
-    /*
     private void initCategories() {
         if (categorieRepository.count() == 0) {
             String[] categories = {"Fruits", "Légumes", "Céréales", "Produits Laitiers", "Viandes"};
@@ -128,10 +105,10 @@ public class DataInitializer {
             System.out.println("📂 " + categories.length + " catégories créées!");
         }
     }
-    */
     
-    // Commenté: Ne plus créer de producteurs par défaut
-    /*
+    /**
+     * Initialise les producteurs de test
+     */
     private void initProducteurs() {
         if (producteurRepository.count() == 0) {
             // Producteur 1
@@ -149,6 +126,7 @@ public class DataInitializer {
             prod1.setDateInscription(LocalDate.now());
             prod1.setActif(true);
             prod1.setDescription("Producteur de fruits biologiques");
+            prod1.setNomFerme("Ferme Bio de Mamadou");
             producteurRepository.save(prod1);
             
             // Producteur 2
@@ -166,15 +144,16 @@ public class DataInitializer {
             prod2.setDateInscription(LocalDate.now());
             prod2.setActif(true);
             prod2.setDescription("Productrice de légumes frais");
+            prod2.setNomFerme("Ferme de Fatou");
             producteurRepository.save(prod2);
             
             System.out.println("👥 2 producteurs créés et validés!");
         }
     }
-    */
     
-    // Commenté: Ne plus créer de produits par défaut
-    /*
+    /**
+     * Initialise les produits de test
+     */
     private void initProduits() {
         if (produitRepository.count() == 0) {
             Producteur producteur1 = producteurRepository.findByTelephone("76543210");
@@ -252,5 +231,5 @@ public class DataInitializer {
             System.out.println("🛒 6 produits créés avec succès!");
         }
     }
-    */
+
 }
