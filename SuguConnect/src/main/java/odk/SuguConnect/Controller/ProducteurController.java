@@ -11,10 +11,12 @@ import lombok.RequiredArgsConstructor;
 import odk.SuguConnect.DTO.Request.ProducteurRequestDTO;
 import odk.SuguConnect.DTO.Request.ProduitRequestDTO;
 import odk.SuguConnect.DTO.Responses.ProducteurResponseDTO;
+import odk.SuguConnect.DTO.Responses.CommandeResponseDTO;
 import odk.SuguConnect.Entity.Categorie;
 import odk.SuguConnect.Entity.Commande;
 import odk.SuguConnect.Entity.Produit;
 import odk.SuguConnect.Enums.StatutCommande;
+import odk.SuguConnect.Mapper.CommandeMapper;
 import odk.SuguConnect.Service.CommandeService;
 import odk.SuguConnect.Service.FileStorageService;
 import odk.SuguConnect.Service.ProducteurService;
@@ -28,6 +30,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping(path = "/producteur")
@@ -349,7 +352,7 @@ public class ProducteurController {
             @ApiResponse(responseCode = "200", description = "Commandes récupérées avec succès"),
             @ApiResponse(responseCode = "403", description = "Non autorisé")
     })
-    public ResponseEntity<List<Commande>> getCommandesProducteur(
+    public ResponseEntity<List<odk.SuguConnect.DTO.Responses.CommandeResponseDTO>> getCommandesProducteur(
             @Parameter(description = "ID du producteur", required = true)
             @PathVariable int producteurId,
             @Parameter(description = "Statut de la commande (VALIDEE, EN_LIVRAISON, LIVREE, etc.)")
@@ -358,6 +361,32 @@ public class ProducteurController {
             @RequestParam(required = false) String search) {
         
         List<Commande> commandes = commandeService.voirCommandesParProducteur(producteurId, statut, search);
-        return ResponseEntity.ok(commandes);
+        List<odk.SuguConnect.DTO.Responses.CommandeResponseDTO> commandeDTOs = commandes.stream()
+                .map(odk.SuguConnect.Mapper.CommandeMapper::toResponse)
+                .toList();
+        return ResponseEntity.ok(commandeDTOs);
+    }
+    
+    // Nouveau endpoint pour récupérer les commandes payées d'un producteur
+    @GetMapping(path = "/{producteurId}/commandes/payees")
+    @Operation(
+            summary = "Récupérer les commandes payées d'un producteur",
+            description = "Retourne toutes les commandes payées d'un producteur avec recherche optionnelle"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Commandes payées récupérées avec succès"),
+            @ApiResponse(responseCode = "403", description = "Non autorisé")
+    })
+    public ResponseEntity<List<odk.SuguConnect.DTO.Responses.CommandeResponseDTO>> getCommandesPayeesProducteur(
+            @Parameter(description = "ID du producteur", required = true)
+            @PathVariable int producteurId,
+            @Parameter(description = "Terme de recherche (numéro commande, nom/prénom client)")
+            @RequestParam(required = false) String search) {
+        
+        List<Commande> commandes = commandeService.voirCommandesPayeesParProducteur(producteurId, search);
+        List<odk.SuguConnect.DTO.Responses.CommandeResponseDTO> commandeDTOs = commandes.stream()
+                .map(odk.SuguConnect.Mapper.CommandeMapper::toResponse)
+                .toList();
+        return ResponseEntity.ok(commandeDTOs);
     }
 }

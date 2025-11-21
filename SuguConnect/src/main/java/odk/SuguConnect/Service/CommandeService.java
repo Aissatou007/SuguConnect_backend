@@ -120,6 +120,23 @@ public class CommandeService {
         return commandes;
     }
     
+    // Nouvelle méthode pour récupérer les commandes payées d'un producteur
+    public List<Commande> voirCommandesPayeesParProducteur(int producteurId, String search) {
+        List<Commande> commandes = commandeRepository.findByProducteurIdAndPaiementNotNull(producteurId);
+        
+        // Filtrer par recherche si nécessaire
+        if (search != null && !search.trim().isEmpty()) {
+            String searchLower = search.toLowerCase();
+            commandes = commandes.stream()
+                .filter(c -> c.getIdCommande() != 0 && String.valueOf(c.getIdCommande()).contains(searchLower)
+                          || c.getConsommateur().getNom().toLowerCase().contains(searchLower)
+                          || c.getConsommateur().getPrenom().toLowerCase().contains(searchLower))
+                .toList();
+        }
+        
+        return commandes;
+    }
+    
     @Transactional
     public Commande changerStatutCommande(int commandeId, int producteurId, StatutCommande nouveauStatut, String motifRejet) {
         Commande commande = findCommandeById(commandeId);

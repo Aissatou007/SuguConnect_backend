@@ -59,6 +59,12 @@ public class SecurityConfig {
                                 "/uploads/**"                      // Accès direct aux fichiers uploadés
                         ).permitAll()
                         
+                        // Consultation publique - Livreurs (GET uniquement)
+                        .requestMatchers(
+                                org.springframework.http.HttpMethod.GET,
+                                "/public/livreurs/**"
+                        ).permitAll()
+                        
                         // Consultation publique - Produits disponibles (GET uniquement)
                         .requestMatchers(
                                 org.springframework.http.HttpMethod.GET,

@@ -30,11 +30,10 @@ public abstract class Utilisateur {
     @Column(name = "lattitude")
     private long latitude ;
     @Enumerated(EnumType.STRING)
+    @Column(length = 20)
     private Role role ;
     private String motDePasse ;
     private LocalDate dateInscription ;
     private String MotifDeRejet;
     private boolean actif;
-
-
 }

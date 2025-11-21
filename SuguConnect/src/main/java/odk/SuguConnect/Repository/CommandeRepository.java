@@ -19,4 +19,8 @@ public interface CommandeRepository extends JpaRepository<Commande , Integer> {
     
     @Query("SELECT DISTINCT c FROM Commande c JOIN c.commandeProduits cp WHERE cp.produit.producteur.id = :producteurId AND c.statutCommande = :statut")
     List<Commande> findByProducteurIdAndStatut(@Param("producteurId") int producteurId, @Param("statut") StatutCommande statut);
+    
+    // Nouvelle méthode pour récupérer les commandes payées d'un producteur
+    @Query("SELECT DISTINCT c FROM Commande c JOIN c.commandeProduits cp WHERE cp.produit.producteur.id = :producteurId AND c.paiement IS NOT NULL")
+    List<Commande> findByProducteurIdAndPaiementNotNull(@Param("producteurId") int producteurId);
 }

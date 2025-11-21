@@ -28,7 +28,7 @@ public class LivreurService {
         
         Livreur livreur = LivreurMapper.toEntity(dto, new Livreur());
         livreur.setMotDePasse(passwordEncoder.encode(dto.getMotDePasse()));
-        livreur.setRole(Role.LIVREUR);
+        livreur.setRole(Role.LIVREUR); // S'assurer que le rôle est correctement défini
         livreur.setDateInscription(LocalDate.now());
         livreur.setActif(true);
         

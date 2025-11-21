@@ -23,6 +23,7 @@ public class Produit {
     private int id ;
     private String nom ;
     private int quantite ;
+    private int seuilAlerte = 0; // Valeur par défaut
     private String description ;
     private float prixUnitaire ;
     private Unite unite ;
