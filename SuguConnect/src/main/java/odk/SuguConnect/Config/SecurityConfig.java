@@ -70,12 +70,14 @@ public class SecurityConfig {
 
         return http.build();
     }
-
-    // ✅ Configuration CORS incluse ici
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:4200")); // Autorise ton front Angular
+        configuration.setAllowedOrigins(List.of(
+                "http://localhost:4200",
+                "http://10.0.2.2:8080",
+                "http://127.0.0.1:8080",
+                "*"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
