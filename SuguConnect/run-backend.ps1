@@ -10,4 +10,4 @@ $env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
 Write-Host "✅ Java 17 configuré" -ForegroundColor Green
 Write-Host "🚀 Démarrage du serveur Spring Boot...`n" -ForegroundColor Yellow
 
-mvn spring-boot:run
+.\mvnw.cmd spring-boot:run -DskipTests

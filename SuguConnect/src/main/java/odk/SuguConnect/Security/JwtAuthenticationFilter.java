@@ -65,6 +65,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     String role = jwtService.extractRole(jwt);
                     logger.info("JWT Filter - Rôle extrait du token: " + role);
                     
+                    // Extraire l'ID utilisateur du token JWT
+                    Integer userId = jwtService.extractUserId(jwt);
+                    logger.info("JWT Filter - ID utilisateur extrait du token: " + userId);
+                    
                     // Créer l'autorité avec le préfixe ROLE_
                     SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + role);
                     logger.info("JWT Filter - Autorité créée: " + authority.getAuthority());

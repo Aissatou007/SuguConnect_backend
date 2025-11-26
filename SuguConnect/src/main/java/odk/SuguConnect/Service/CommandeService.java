@@ -79,6 +79,12 @@ public class CommandeService {
         
         return commande;
     }
+    
+
+    public List<Commande> voirToutesLesCommandes() {
+        return commandeRepository.findAll();
+    }
+    
     public List<Commande> voirCommandesParConsommateur(int idConsommateur) {
         Consommateur consommateur = findConsommateurById(idConsommateur);
         List<Commande> commandes = commandeRepository.findByConsommateur(consommateur);
@@ -89,14 +95,6 @@ public class CommandeService {
         return commandes;
     }
     
-    public Commande voirCommandeParId(int commandeId) {
-        return findCommandeById(commandeId);
-    }
-    
-    public List<Commande> voirToutesLesCommandes() {
-        return commandeRepository.findAll();
-    }
-    
     public List<Commande> voirCommandesParProducteur(int producteurId, StatutCommande statut, String search) {
         List<Commande> commandes;
         
@@ -105,6 +103,21 @@ public class CommandeService {
             commandes = commandeRepository.findByProducteurIdAndStatut(producteurId, statut);
         } else {
             commandes = commandeRepository.findByProducteurId(producteurId);
+        }
+        
+        // Inclure les commandes payées dans la liste des commandes en attente
+        if (statut == StatutCommande.VALIDEE) {
+            // Récupérer les commandes avec paiement validé
+            List<Commande> commandesPayees = commandeRepository.findByProducteurIdAndPaiementStatutPaiement(producteurId, StatutPaiement.VALIDE);
+            
+            // Ajouter les commandes payées à la liste
+            commandes.addAll(commandesPayees);
+            
+            // Supprimer les doublons et trier par ID ou date
+            commandes = commandes.stream()
+                .distinct()
+                .sorted((c1, c2) -> Integer.compare(c2.getIdCommande(), c1.getIdCommande()))
+                .toList();
         }
         
         // Filtrer par recherche si nécessaire
@@ -174,6 +187,10 @@ public class CommandeService {
         );
         
         return commandeRepository.save(commande);
+    }
+    
+    public Commande voirCommandeParId(int commandeId) {
+        return findCommandeById(commandeId);
     }
     
     // ========== Méthodes privées utilitaires ==========

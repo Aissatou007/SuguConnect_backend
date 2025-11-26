@@ -18,15 +18,21 @@ import odk.SuguConnect.Interface.Utilisateur;
 import odk.SuguConnect.Mapper.CommandeMapper;
 import odk.SuguConnect.Service.CommandeService;
 import odk.SuguConnect.Service.ConsommateurService;
+import odk.SuguConnect.Security.JwtService;
 import odk.SuguConnect.Service.PanierService;
 import odk.SuguConnect.Service.ProduitService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpServletRequest;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
+import jakarta.persistence.EntityNotFoundException;
 
 @RestController
 @RequestMapping(path = "/consommateur")
@@ -37,6 +43,7 @@ public class ConsommateurController {
     private final CommandeService commandeService;
     private final PanierService panierService;
     private final ProduitService produitService;
+    private final JwtService jwtService;
 
     @PostMapping(path = "/inscription")
     @Operation(
@@ -229,9 +236,34 @@ public class ConsommateurController {
             @ApiResponse(responseCode = "200", description = "Commandes récupérées"),
             @ApiResponse(responseCode = "404", description = "Aucune commande trouvée")
     })
-    public ResponseEntity<List<odk.SuguConnect.DTO.Responses.CommandeResponseDTO>> voirMesCommandes(
+    public ResponseEntity<?> voirMesCommandes(
             @Parameter(description = "ID du consommateur", required = true)
-            @PathVariable int idConsommateur) {
+            @PathVariable int idConsommateur,
+            Authentication authentication,
+            HttpServletRequest httpRequest) {
+        
+        // Vérifier que l'utilisateur authentifié est bien le consommateur concerné ou un administrateur
+        String telephone = authentication.getName();
+        Consommateur consommateur = consommateurService.findByTelephone(telephone);
+        
+        // Extraire l'ID utilisateur du token JWT
+        String authHeader = httpRequest.getHeader("Authorization");
+        String jwt = authHeader.substring(7); // Enlever "Bearer "
+        Integer tokenUserId = jwtService.extractUserId(jwt);
+        
+        // Ajouter des logs pour le débogage
+        System.out.println("DEBUG: ID consommateur dans l'URL: " + idConsommateur);
+        System.out.println("DEBUG: Téléphone de l'authentification: " + telephone);
+        System.out.println("DEBUG: ID utilisateur du token: " + tokenUserId);
+        System.out.println("DEBUG: Rôle du consommateur: " + consommateur.getRole().name());
+        
+        // Vérifier que l'ID du token correspond à l'ID du consommateur dans l'URL
+        if (!consommateur.getRole().name().equals("ADMIN") && tokenUserId != idConsommateur) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Vous n'êtes pas autorisé à voir les commandes de ce consommateur. ID token: " + tokenUserId + ", ID URL: " + idConsommateur);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
+        }
+        
         List<Commande> commandes = commandeService.voirCommandesParConsommateur(idConsommateur);
         List<odk.SuguConnect.DTO.Responses.CommandeResponseDTO> response = commandes.stream()
                 .map(CommandeMapper::toResponse)
@@ -239,6 +271,55 @@ public class ConsommateurController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping(path = "/commande/{commandeId}")
+    @Operation(
+            summary = "Voir une commande spécifique",
+            description = "Retourne les détails d'une commande spécifique"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Commande récupérée"),
+            @ApiResponse(responseCode = "403", description = "Non autorisé"),
+            @ApiResponse(responseCode = "404", description = "Commande non trouvée")
+    })
+    public ResponseEntity<?> voirCommande(
+            @Parameter(description = "ID de la commande", required = true)
+            @PathVariable int commandeId,
+            Authentication authentication,
+            HttpServletRequest httpRequest) {
+        
+        try {
+            // Vérifier que l'utilisateur authentifié est bien le propriétaire de la commande ou un administrateur
+            String telephone = authentication.getName();
+            Consommateur consommateur = consommateurService.findByTelephone(telephone);
+            
+            // Extraire l'ID utilisateur du token JWT
+            String authHeader = httpRequest.getHeader("Authorization");
+            String jwt = authHeader.substring(7); // Enlever "Bearer "
+            Integer tokenUserId = jwtService.extractUserId(jwt);
+            
+            // Récupérer la commande
+            Commande commande = commandeService.voirCommandeParId(commandeId);
+            
+            // Vérifier que le consommateur de la commande correspond à l'utilisateur authentifié ou que l'utilisateur est admin
+            if (!consommateur.getRole().name().equals("ADMIN") && 
+                commande.getConsommateur().getId() != tokenUserId) {
+                Map<String, String> errorResponse = new HashMap<>();
+                errorResponse.put("error", "Vous n'êtes pas autorisé à voir cette commande.");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
+            }
+            
+            return ResponseEntity.ok(CommandeMapper.toResponse(commande));
+        } catch (EntityNotFoundException e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Commande non trouvée: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+        } catch (Exception e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Erreur lors de la récupération de la commande: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+    
     @PostMapping(path = "/{idConsommateur}/commande")
     @Operation(
             summary = "Passer une commande (utilise le panier)",
@@ -250,22 +331,50 @@ public class ConsommateurController {
             @ApiResponse(responseCode = "403", description = "Non autorisé"),
             @ApiResponse(responseCode = "404", description = "Consommateur non trouvé")
     })
-    public ResponseEntity<odk.SuguConnect.DTO.Responses.CommandeResponseDTO> passerCommande(
+    public ResponseEntity<?> passerCommande(
             @Parameter(description = "ID du consommateur", required = true)
             @PathVariable int idConsommateur,
             @Parameter(description = "Mode de paiement choisi", required = true)
             @RequestParam ModePaiement modePaiement,
-            Authentication authentication) {
+            Authentication authentication,
+            HttpServletRequest httpRequest) {
         
         // Vérifier que l'utilisateur authentifié est bien le consommateur concerné ou un administrateur
         String telephone = authentication.getName();
         Consommateur consommateur = consommateurService.findByTelephone(telephone);
-        if (!consommateur.getRole().name().equals("ADMIN") && consommateur.getId() != idConsommateur) {
-            throw new SecurityException("Vous n'êtes pas autorisé à passer une commande pour ce consommateur");
+        
+        // Extraire l'ID utilisateur du token JWT
+        String authHeader = httpRequest.getHeader("Authorization");
+        String jwt = authHeader.substring(7); // Enlever "Bearer "
+        Integer tokenUserId = jwtService.extractUserId(jwt);
+        
+        // Ajouter des logs pour le débogage
+        System.out.println("DEBUG: ID consommateur dans l'URL: " + idConsommateur);
+        System.out.println("DEBUG: Téléphone de l'authentification: " + telephone);
+        System.out.println("DEBUG: ID utilisateur du token: " + tokenUserId);
+        System.out.println("DEBUG: Rôle du consommateur: " + consommateur.getRole().name());
+        
+        // Vérifier que l'ID du token correspond à l'ID du consommateur dans l'URL
+        if (!consommateur.getRole().name().equals("ADMIN") && tokenUserId != idConsommateur) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Vous n'êtes pas autorisé à passer une commande pour ce consommateur. ID token: " + tokenUserId + ", ID URL: " + idConsommateur);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
         }
         
-        Commande commande = commandeService.passerCommande(idConsommateur, modePaiement);
-        return ResponseEntity.ok(CommandeMapper.toResponse(commande));
+        try {
+            Commande commande = commandeService.passerCommande(idConsommateur, modePaiement);
+            return ResponseEntity.ok(CommandeMapper.toResponse(commande));
+        } catch (IllegalArgumentException e) {
+            // Gérer les erreurs de stock insuffisant
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Impossible de passer la commande: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        } catch (EntityNotFoundException e) {
+            // Gérer les erreurs de produit non trouvé
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Impossible de passer la commande: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+        }
     }
     
     @PostMapping(path = "/{idConsommateur}/commande/direct")
@@ -279,40 +388,52 @@ public class ConsommateurController {
             @ApiResponse(responseCode = "403", description = "Non autorisé"),
             @ApiResponse(responseCode = "404", description = "Consommateur ou produit non trouvé")
     })
-    public ResponseEntity<odk.SuguConnect.DTO.Responses.CommandeResponseDTO> passerCommandeDirecte(
+    public ResponseEntity<?> passerCommandeDirecte(
             @Parameter(description = "ID du consommateur", required = true)
             @PathVariable int idConsommateur,
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "Produits à commander et mode de paiement"
             )
             @RequestBody PasserCommandeRequestDTO request,
-            Authentication authentication) {
+            Authentication authentication,
+            HttpServletRequest httpRequest) {
         
         // Vérifier que l'utilisateur authentifié est bien le consommateur concerné ou un administrateur
         String telephone = authentication.getName();
         Consommateur consommateur = consommateurService.findByTelephone(telephone);
-        if (!consommateur.getRole().name().equals("ADMIN") && consommateur.getId() != idConsommateur) {
-            throw new SecurityException("Vous n'êtes pas autorisé à passer une commande pour ce consommateur");
+        
+        // Extraire l'ID utilisateur du token JWT
+        String authHeader = httpRequest.getHeader("Authorization");
+        String jwt = authHeader.substring(7); // Enlever "Bearer "
+        Integer tokenUserId = jwtService.extractUserId(jwt);
+        
+        // Ajouter des logs pour le débogage
+        System.out.println("DEBUG: ID consommateur dans l'URL: " + idConsommateur);
+        System.out.println("DEBUG: Téléphone de l'authentification: " + telephone);
+        System.out.println("DEBUG: ID utilisateur du token: " + tokenUserId);
+        System.out.println("DEBUG: Rôle du consommateur: " + consommateur.getRole().name());
+        
+        // Vérifier que l'ID du token correspond à l'ID du consommateur dans l'URL
+        if (!consommateur.getRole().name().equals("ADMIN") && tokenUserId != idConsommateur) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Vous n'êtes pas autorisé à passer une commande pour ce consommateur. ID token: " + tokenUserId + ", ID URL: " + idConsommateur);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
         }
         
-        Commande commande = commandeService.passerCommandeAvecProduits(idConsommateur, request);
-        return ResponseEntity.ok(CommandeMapper.toResponse(commande));
-    }
-    
-    @GetMapping(path = "/commande/{commandeId}")
-    @Operation(
-            summary = "Voir une commande spécifique",
-            description = "Retourne les détails d'une commande spécifique"
-    )
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Commande récupérée"),
-            @ApiResponse(responseCode = "404", description = "Commande non trouvée")
-    })
-    public ResponseEntity<odk.SuguConnect.DTO.Responses.CommandeResponseDTO> voirCommande(
-            @Parameter(description = "ID de la commande", required = true)
-            @PathVariable int commandeId) {
-        Commande commande = commandeService.voirCommandeParId(commandeId);
-        return ResponseEntity.ok(CommandeMapper.toResponse(commande));
+        try {
+            Commande commande = commandeService.passerCommandeAvecProduits(idConsommateur, request);
+            return ResponseEntity.ok(CommandeMapper.toResponse(commande));
+        } catch (IllegalArgumentException e) {
+            // Gérer les erreurs de stock insuffisant
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Impossible de passer la commande: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        } catch (EntityNotFoundException e) {
+            // Gérer les erreurs de produit non trouvé
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Impossible de passer la commande: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+        }
     }
     
     @PostMapping(path = "/commande/{commandeId}/valider-reception")
@@ -326,21 +447,58 @@ public class ConsommateurController {
             @ApiResponse(responseCode = "403", description = "Non autorisé"),
             @ApiResponse(responseCode = "404", description = "Commande non trouvée")
     })
-    public ResponseEntity<odk.SuguConnect.DTO.Responses.CommandeResponseDTO> validerReceptionCommande(
+    public ResponseEntity<?> validerReceptionCommande(
             @Parameter(description = "ID de la commande", required = true)
             @PathVariable int commandeId,
             @Parameter(description = "ID du consommateur", required = true)
             @RequestParam int consommateurId,
-            Authentication authentication) {
+            Authentication authentication,
+            HttpServletRequest httpRequest) {
         
         // Vérifier que l'utilisateur authentifié est bien le consommateur concerné ou un administrateur
         String telephone = authentication.getName();
         Consommateur consommateur = consommateurService.findByTelephone(telephone);
-        if (!consommateur.getRole().name().equals("ADMIN") && consommateur.getId() != consommateurId) {
-            throw new SecurityException("Vous n'êtes pas autorisé à valider cette commande");
+        
+        // Extraire l'ID utilisateur du token JWT
+        String authHeader = httpRequest.getHeader("Authorization");
+        String jwt = authHeader.substring(7); // Enlever "Bearer "
+        Integer tokenUserId = jwtService.extractUserId(jwt);
+        
+        // Ajouter des logs pour le débogage
+        System.out.println("DEBUG: ID consommateur dans les paramètres: " + consommateurId);
+        System.out.println("DEBUG: Téléphone de l'authentification: " + telephone);
+        System.out.println("DEBUG: ID utilisateur du token: " + tokenUserId);
+        System.out.println("DEBUG: Rôle du consommateur: " + consommateur.getRole().name());
+        
+        if (!consommateur.getRole().name().equals("ADMIN") && tokenUserId != consommateurId) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Vous n'êtes pas autorisé à valider cette commande. ID token: " + tokenUserId + ", ID paramètre: " + consommateurId);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
         }
         
-        Commande commande = commandeService.validerReceptionCommande(commandeId, consommateurId);
-        return ResponseEntity.ok(CommandeMapper.toResponse(commande));
+        try {
+            Commande commande = commandeService.validerReceptionCommande(commandeId, consommateurId);
+            return ResponseEntity.ok(CommandeMapper.toResponse(commande));
+        } catch (IllegalArgumentException e) {
+            // Gérer les erreurs de validation
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Impossible de valider la réception: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        } catch (IllegalStateException e) {
+            // Gérer les erreurs d'état
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Impossible de valider la réception: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        } catch (SecurityException e) {
+            // Gérer les erreurs d'autorisation
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Vous n'êtes pas autorisé à valider cette commande");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
+        } catch (EntityNotFoundException e) {
+            // Gérer les erreurs de commande non trouvée
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Impossible de valider la réception: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+        }
     }
 }

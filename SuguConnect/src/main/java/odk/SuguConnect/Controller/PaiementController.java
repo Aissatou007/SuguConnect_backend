@@ -70,15 +70,25 @@ public class PaiementController {
             System.out.println("Montant: " + montant);
             System.out.println("Numéro de téléphone: " + numeroTelephone);
             
-            // Extraire l'ID du consommateur depuis l'authentification
-            String telephone = authentication.getName();
-            System.out.println("Téléphone de l'utilisateur authentifié: " + telephone);
+            // Extraire l'ID du consommateur
+            Integer consommateurIdObj = (Integer) paiementData.get("consommateurId");
+            int consommateurId;
             
-            Consommateur consommateur = consommateurService.findByTelephone(telephone);
-            System.out.println("Consommateur trouvé: " + consommateur);
-            int consommateurId = consommateur.getId();
+            if (consommateurIdObj != null) {
+                // Utiliser l'ID du consommateur fourni
+                consommateurId = consommateurIdObj;
+                System.out.println("Consommateur ID fourni: " + consommateurId);
+            } else {
+                // Extraire l'ID du consommateur depuis l'authentification
+                String telephone = authentication.getName();
+                System.out.println("Téléphone de l'utilisateur authentifié: " + telephone);
+                
+                Consommateur consommateur = consommateurService.findByTelephone(telephone);
+                System.out.println("Consommateur trouvé: " + consommateur);
+                consommateurId = consommateur.getId();
+            }
             
-            System.out.println("Consommateur ID: " + consommateurId);
+            System.out.println("Consommateur ID final: " + consommateurId);
             
             // Créer le paiement via le service
             Paiement paiement = paiementService.creerPaiement(

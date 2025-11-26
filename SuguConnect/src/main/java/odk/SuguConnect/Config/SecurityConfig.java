@@ -69,10 +69,22 @@ public class SecurityConfig {
                         .requestMatchers(
                                 org.springframework.http.HttpMethod.GET,
                                 "/consommateur/produits",          // Voir les produits disponibles
+                                "/consommateur/produits/categorie/*", // Produits par catégorie
                                 "/api/produits/populaires",        // Produits populaires
                                 "/api/produits/populaires/**",      // Tous les endpoints produits populaires
                                 "/api/mobile/**"                   // Tous les endpoints mobiles
                         ).permitAll()
+                        
+                        // Opérations sur le panier (CONSOMMATEUR ou ADMIN)
+                        .requestMatchers(
+                                org.springframework.http.HttpMethod.POST,
+                                "/consommateur/*/panier/ajouter/*",
+                                "/consommateur/*/panier/retirer/*"
+                        ).hasAnyRole("CONSOMMATEUR", "ADMIN")
+                        .requestMatchers(
+                                org.springframework.http.HttpMethod.GET,
+                                "/consommateur/*/panier"
+                        ).hasAnyRole("CONSOMMATEUR", "ADMIN")
                         
                         // Catégories publiques (GET uniquement)
                         .requestMatchers(

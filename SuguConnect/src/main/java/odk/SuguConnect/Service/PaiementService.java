@@ -46,6 +46,10 @@ public class PaiementService {
             
             System.out.println("Autorisation vérifiée avec succès");
             
+            // Récupérer le consommateur
+            Consommateur consommateur = commande.getConsommateur();
+            System.out.println("Consommateur récupéré: " + consommateur.getId());
+            
             // Créer le paiement
             Paiement paiement = new Paiement();
             paiement.setCommande(commande);
@@ -54,6 +58,7 @@ public class PaiementService {
             paiement.setStatutPaiement(StatutPaiement.INITIE);
             paiement.setDatePaiement(LocalDate.now());
             paiement.setNumeroTelephone(numeroTelephone);
+            paiement.setConsommateur(consommateur); // Associer le consommateur au paiement
             
             // Sauvegarder le paiement
             Paiement savedPaiement = paiementRepository.save(paiement);
@@ -65,6 +70,20 @@ public class PaiementService {
             commandeRepository.save(commande);
             
             System.out.println("Paiement associé à la commande");
+            
+            // Valider immédiatement le paiement (comme demandé)
+            savedPaiement.setStatutPaiement(StatutPaiement.VALIDE);
+            savedPaiement.setDatePaiement(LocalDate.now());
+            paiementRepository.save(savedPaiement);
+            
+            System.out.println("Paiement validé immédiatement");
+            
+            // Notifier le consommateur
+            notificationService.notifierPaiementRecu(
+                consommateur.getId(),
+                commande.getIdCommande(),
+                montant
+            );
             
             return savedPaiement;
         } catch (Exception e) {
