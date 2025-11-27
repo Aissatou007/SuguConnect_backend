@@ -9,6 +9,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import odk.SuguConnect.Config.StatutCommandeConverter;
 import odk.SuguConnect.Enums.ModePaiement;
 import odk.SuguConnect.Enums.StatutCommande;
 
@@ -33,7 +34,8 @@ public class Commande {
 
     private Double montantTotal;
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = StatutCommandeConverter.class)
+    @Column(columnDefinition = "VARCHAR(50)")
     private StatutCommande statutCommande;
 
     @Enumerated(EnumType.STRING)
@@ -47,12 +49,12 @@ public class Commande {
 
     @ManyToOne
     @JoinColumn(name = "consommateur_id")
-    @JsonIgnoreProperties({"commandes", "avis", "paiements"}) // ✅ Évite la boucle sans cacher le consommateur
+    @JsonIgnoreProperties({"commandes", "avis", "paiements"}) // Évite la boucle sans cacher le consommateur
     private Consommateur consommateur;
 
     @OneToOne
     @JoinColumn(name ="paiement_id")
-    @JsonIgnoreProperties({"commande"}) // ✅ Évite la boucle
+    @JsonIgnoreProperties({"commande"}) // Évite la boucle
     private Paiement paiement;
 
     @OneToOne(mappedBy = "commande")

@@ -25,12 +25,30 @@ public class FileStorageService {
 
     @Autowired
     public FileStorageService(FileStorageProperties fileStorageProperties) {
-        this.fileStorageLocation = Paths.get(fileStorageProperties.getUploadDir())
-                .toAbsolutePath().normalize();
+        String uploadDir = fileStorageProperties.getUploadDir();
+        
+        // Si le chemin est relatif, le rendre absolu depuis le répertoire de travail
+        if (!Paths.get(uploadDir).isAbsolute()) {
+            // Utiliser le répertoire de travail de l'application
+            String workingDir = System.getProperty("user.dir");
+            this.fileStorageLocation = Paths.get(workingDir, uploadDir).toAbsolutePath().normalize();
+        } else {
+            this.fileStorageLocation = Paths.get(uploadDir).toAbsolutePath().normalize();
+        }
 
         try {
             Files.createDirectories(this.fileStorageLocation);
+            System.out.println("==========================================");
+            System.out.println("CONFIGURATION DU STOCKAGE DE FICHIERS");
+            System.out.println("Chemin configuré: " + uploadDir);
+            System.out.println("Répertoire de travail: " + System.getProperty("user.dir"));
+            System.out.println("Répertoire de stockage ABSOLU: " + this.fileStorageLocation.toAbsolutePath());
+            System.out.println("Répertoire existe: " + Files.exists(this.fileStorageLocation));
+            System.out.println("Répertoire est accessible en écriture: " + Files.isWritable(this.fileStorageLocation));
+            System.out.println("==========================================");
         } catch (Exception ex) {
+            System.err.println("Erreur lors de la création du répertoire: " + ex.getMessage());
+            ex.printStackTrace();
             throw new RuntimeException("Impossible de créer le répertoire de stockage des fichiers.", ex);
         }
     }
@@ -40,11 +58,14 @@ public class FileStorageService {
         String originalFileName = StringUtils.cleanPath(file.getOriginalFilename());
         
         try {
+            // Vérifier que le fichier n'est pas vide
+            if (file.isEmpty()) {
+                throw new RuntimeException("Le fichier est vide: " + originalFileName);
+            }
 
             if(originalFileName.contains("..")) {
                 throw new RuntimeException("Le nom du fichier contient une séquence de chemin invalide " + originalFileName);
             }
-
 
             String fileExtension = "";
             if(originalFileName.contains(".")) {
@@ -52,12 +73,60 @@ public class FileStorageService {
             }
             String newFileName = UUID.randomUUID().toString() + fileExtension;
 
+            // Vérifier que le répertoire existe
+            if (!Files.exists(this.fileStorageLocation)) {
+                System.out.println("Création du répertoire: " + this.fileStorageLocation);
+                Files.createDirectories(this.fileStorageLocation);
+            }
+
             // Copier le fichier vers l'emplacement cible
             Path targetLocation = this.fileStorageLocation.resolve(newFileName);
+            System.out.println("Sauvegarde du fichier vers: " + targetLocation.toAbsolutePath());
+            
+            // Vérifier la taille du fichier
+            long fileSize = file.getSize();
+            System.out.println("Taille du fichier: " + fileSize + " bytes");
+            
+            // S'assurer que le répertoire parent existe
+            Files.createDirectories(targetLocation.getParent());
+            
+            // Copier le fichier vers l'emplacement cible
             Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
+            
+            // Forcer l'écriture sur le disque
+            try {
+                Files.getFileStore(targetLocation).getAttribute("basic:isReadOnly");
+            } catch (Exception e) {
+                // Ignorer les erreurs de vérification
+            }
+            
+            // Vérifier que le fichier a bien été créé
+            if (Files.exists(targetLocation)) {
+                long savedFileSize = Files.size(targetLocation);
+                System.out.println("✅ Fichier sauvegardé avec succès: " + newFileName);
+                System.out.println("   Chemin complet: " + targetLocation.toAbsolutePath());
+                System.out.println("   Taille: " + savedFileSize + " bytes");
+                System.out.println("   Fichier existe: " + Files.exists(targetLocation));
+                System.out.println("   Fichier est lisible: " + Files.isReadable(targetLocation));
+                
+                // Vérification supplémentaire après un court délai
+                try {
+                    Thread.sleep(100);
+                    if (!Files.exists(targetLocation)) {
+                        System.err.println("⚠️ ATTENTION: Le fichier a disparu après la sauvegarde!");
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            } else {
+                System.err.println("❌ ERREUR: Le fichier n'a pas été créé: " + targetLocation);
+                throw new RuntimeException("Le fichier n'a pas été créé: " + targetLocation);
+            }
 
             return newFileName;
         } catch (IOException ex) {
+            System.err.println("Erreur lors de la sauvegarde du fichier " + originalFileName + ": " + ex.getMessage());
+            ex.printStackTrace();
             throw new RuntimeException("Impossible de stocker le fichier " + originalFileName + ". Veuillez réessayer!", ex);
         }
     }

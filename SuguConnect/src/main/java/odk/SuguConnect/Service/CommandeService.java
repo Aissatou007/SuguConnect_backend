@@ -42,8 +42,8 @@ public class CommandeService {
         commande.setMontantTotal(montantTotal);
         commandeRepository.save(commande);
         
-        // Create payment
-        Paiement paiement = creerPaiement(commande, request.modePaiement(), montantTotal);
+        // Create and process payment based on payment method
+        Paiement paiement = creerEtTraiterPaiement(commande, request.modePaiement(), montantTotal, request.numeroTelephone());
         commande.setPaiement(paiement);
         commandeRepository.save(commande);
         
@@ -70,13 +70,16 @@ public class CommandeService {
     public int countCommandesParConsommateur(Long consommateurId) {
         return commandeRepository.countByConsommateurId(consommateurId); // méthode JPA
     }
+    @Transactional(readOnly = true)
     public List<Commande> voirCommandesParConsommateur(int idConsommateur) {
         Consommateur consommateur = findConsommateurById(idConsommateur);
-        List<Commande> commandes = commandeRepository.findByConsommateur(consommateur);
         
-        if (commandes.isEmpty()) {
-            throw new EntityNotFoundException("Aucune commande trouvée pour ce consommateur");
-        }
+        // Utiliser la méthode avec JOIN FETCH pour charger toutes les relations
+        // Cela évite les problèmes de lazy loading et garantit que toutes les données sont chargées
+        List<Commande> commandes = commandeRepository.findByConsommateurWithRelations(consommateur);
+        
+        // Retourner une liste vide au lieu de lancer une exception si aucune commande
+        // Cela permet de gérer le cas où le consommateur n'a pas encore passé de commande
         return commandes;
     }
     
@@ -260,13 +263,34 @@ public class CommandeService {
                 .orElseThrow(() -> new EntityNotFoundException("Produit introuvable dans le panier"));
     }
     
-    private Paiement creerPaiement(Commande commande, ModePaiement modePaiement, double montant) {
+    private Paiement creerEtTraiterPaiement(Commande commande, ModePaiement modePaiement, double montant, String numeroTelephone) {
         Paiement paiement = new Paiement();
         paiement.setCommande(commande);
         paiement.setMethodePaiement(modePaiement);
         paiement.setMontant(montant);
-        paiement.setStatutPaiement(StatutPaiement.INITIE);
         paiement.setDatePaiement(LocalDate.now());
+        paiement.setConsommateur(commande.getConsommateur());
+        
+        // Traiter le paiement selon le mode choisi
+        switch (modePaiement) {
+            case ESPECES -> {
+                // Pour les paiements en espèces, on valide directement
+                paiement.setStatutPaiement(StatutPaiement.VALIDE);
+            }
+            case ORANGE_MONEY, WAVE, MOBILE_MONEY -> {
+                // Pour les paiements mobiles, on initie le paiement
+                if (numeroTelephone == null || numeroTelephone.trim().isEmpty()) {
+                    throw new IllegalArgumentException("Le numéro de téléphone est requis pour les paiements mobiles");
+                }
+                paiement.setStatutPaiement(StatutPaiement.EN_ATTENTE);
+                // TODO: Intégration avec l'API Orange Money/Wave pour initier le paiement
+                // Pour l'instant, on crée juste le paiement en attente
+            }
+            default -> {
+                paiement.setStatutPaiement(StatutPaiement.EN_ATTENTE);
+            }
+        }
+        
         return paiementRepository.save(paiement);
     }
     

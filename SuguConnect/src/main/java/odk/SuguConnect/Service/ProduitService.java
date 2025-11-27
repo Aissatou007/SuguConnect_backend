@@ -65,8 +65,26 @@ public class ProduitService {
         
         produit.setProducteur(producteur);
         produit.setStockDisponible(produit.getQuantite());
-        produitRepository.save(produit);
-        return produit;
+        
+        // Vérifier que les photos sont bien présentes avant la sauvegarde
+        if (produit.getPhotos() == null || produit.getPhotos().isEmpty()) {
+            throw new IllegalArgumentException("Le produit doit contenir au moins une photo. Aucune photo n'a été fournie.");
+        }
+        
+        System.out.println("Sauvegarde du produit avec " + produit.getPhotos().size() + " photos");
+        Produit produitSauvegarde = produitRepository.save(produit);
+        
+        // Vérifier que les photos ont bien été sauvegardées
+        Produit produitVerifie = produitRepository.findById(produitSauvegarde.getId())
+                .orElseThrow(() -> new EntityNotFoundException("Erreur lors de la sauvegarde du produit"));
+        
+        if (produitVerifie.getPhotos() == null || produitVerifie.getPhotos().isEmpty()) {
+            System.err.println("ATTENTION: Les photos n'ont pas été sauvegardées pour le produit ID: " + produitSauvegarde.getId());
+        } else {
+            System.out.println("Photos confirmées en base: " + produitVerifie.getPhotos().size());
+        }
+        
+        return produitSauvegarde;
     }
     
     public Produit modifierProduit(Produit produitModifie , int produitId , int producteurId){
@@ -102,6 +120,14 @@ public class ProduitService {
                 throw new IllegalArgumentException("Le produit ne peut pas avoir plus de 4 photos");
             }
             produit.setPhotos(produitModifie.getPhotos());
+        }
+        
+        // Mettre à jour estBio si fourni explicitement
+        // Le controller initialise estBio avec la valeur par défaut (false) si non fourni
+        // Si estBio est fourni dans la requête, le controller le définit explicitement
+        // On met à jour seulement si la valeur est différente de celle actuelle
+        if(produitModifie.isEstBio() != produit.isEstBio()) {
+            produit.setEstBio(produitModifie.isEstBio());
         }
         
         produitRepository.save(produit);

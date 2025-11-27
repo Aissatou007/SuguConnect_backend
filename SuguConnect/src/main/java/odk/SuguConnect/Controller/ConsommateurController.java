@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import odk.SuguConnect.DTO.Request.ConsommateurRequestDTO;
 import odk.SuguConnect.DTO.Request.PasserCommandePanierDTO;
 import odk.SuguConnect.DTO.Responses.ConsommateurResponseDTO;
+import odk.SuguConnect.DTO.Responses.PanierResponseDTO;
 import odk.SuguConnect.Entity.Commande;
 import odk.SuguConnect.Entity.Panier;
 import odk.SuguConnect.Entity.Produit;
@@ -145,6 +146,22 @@ public class ConsommateurController {
         return ResponseEntity.ok(produits);
     }
 
+    @GetMapping(path = "/produits/categorie/{categorieId}")
+    @Operation(
+            summary = "Récupérer les produits disponibles d'une catégorie",
+            description = "Retourne tous les produits disponibles (avec stock > 0) appartenant à une catégorie spécifique"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Liste des produits disponibles récupérée"),
+            @ApiResponse(responseCode = "404", description = "Catégorie non trouvée")
+    })
+    public ResponseEntity<List<Produit>> voirProduitsParCategorie(
+            @Parameter(description = "ID de la catégorie", required = true)
+            @PathVariable int categorieId) {
+        List<Produit> produits = consommateurService.voirProduitsDisponiblesParCategorie(categorieId);
+        return ResponseEntity.ok(produits);
+    }
+
     @PostMapping(path = "/{idConsommateur}/panier/ajouter/{idProduit}")
     @Operation(
             summary = "Ajouter un produit au panier",
@@ -187,25 +204,19 @@ public class ConsommateurController {
     @GetMapping(path = "/{idConsommateur}/panier")
     @Operation(
             summary = "Voir le panier",
-            description = "Permet de consulter le contenu du panier d'un consommateur. Retourne le panier complet avec tous les produits, ou un message si le panier est vide."
+            description = "Permet de consulter le contenu du panier d'un consommateur. Retourne le panier complet avec tous les produits et leurs détails (quantité, prix, etc.)."
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Panier récupéré avec succès"),
-            @ApiResponse(responseCode = "204", description = "Panier vide - aucun produit dans le panier"),
             @ApiResponse(responseCode = "404", description = "Consommateur non trouvé")
     })
-    public ResponseEntity<?> voirPanier(
+    public ResponseEntity<PanierResponseDTO> voirPanier(
             @Parameter(description = "ID du consommateur", required = true)
             @PathVariable int idConsommateur) {
         try {
             Panier panier = panierService.voirPanier(idConsommateur);
-            
-            // Check if panier is empty
-            if (panier.getProduits() == null || panier.getProduits().isEmpty()) {
-                return ResponseEntity.status(HttpStatus.NO_CONTENT).body("Aucun produit dans le panier");
-            }
-            
-            return ResponseEntity.ok(panier);
+            PanierResponseDTO panierDTO = PanierResponseDTO.fromEntity(panier);
+            return ResponseEntity.ok(panierDTO);
         } catch (EntityNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
@@ -223,17 +234,31 @@ public class ConsommateurController {
     public ResponseEntity<List<odk.SuguConnect.DTO.Responses.CommandeResponseDTO>> voirMesCommandes(
             @Parameter(description = "ID du consommateur", required = true)
             @PathVariable int idConsommateur) {
-        List<Commande> commandes = commandeService.voirCommandesParConsommateur(idConsommateur);
-        List<odk.SuguConnect.DTO.Responses.CommandeResponseDTO> response = commandes.stream()
-                .map(CommandeMapper::toResponse)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(response);
+        try {
+            List<Commande> commandes = commandeService.voirCommandesParConsommateur(idConsommateur);
+            List<odk.SuguConnect.DTO.Responses.CommandeResponseDTO> response = commandes.stream()
+                    .map(CommandeMapper::toResponse)
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(response);
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            // Gérer les erreurs de conversion d'enum ou autres erreurs
+            System.err.println("Erreur lors de la récupération des commandes: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR)
+                    .build();
+        }
     }
 
     @PostMapping(path = "/{idConsommateur}/commande")
     @Operation(
             summary = "Passer une commande",
-            description = "Permet à un consommateur de passer une commande en spécifiant les produits du panier à commander"
+            description = "Permet à un consommateur de passer une commande en spécifiant les produits du panier à commander. " +
+                         "Le paiement est créé et traité automatiquement : " +
+                         "- Pour ESPECES : paiement validé automatiquement " +
+                         "- Pour ORANGE_MONEY/WAVE/MOBILE_MONEY : paiement initié automatiquement (numeroTelephone requis) " +
+                         "Le paiement sera validé automatiquement via webhook lorsque le consommateur confirme le paiement."
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Commande passée avec succès"),
@@ -286,5 +311,94 @@ public class ConsommateurController {
         
         Commande commande = commandeService.validerReceptionCommande(commandeId, consommateurId);
         return ResponseEntity.ok(CommandeMapper.toResponse(commande));
+    }
+
+    @PostMapping(path = "/{idConsommateur}/favoris/{idProduit}")
+    @Operation(
+            summary = "Ajouter un produit aux favoris",
+            description = "Permet à un consommateur d'ajouter un produit à sa liste de favoris"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Produit ajouté aux favoris"),
+            @ApiResponse(responseCode = "404", description = "Consommateur ou produit non trouvé")
+    })
+    public ResponseEntity<String> ajouterAuxFavoris(
+            @Parameter(description = "ID du consommateur", required = true)
+            @PathVariable int idConsommateur,
+            @Parameter(description = "ID du produit", required = true)
+            @PathVariable int idProduit) {
+        String message = consommateurService.ajouterProduitAuxFavoris(idConsommateur, idProduit);
+        return ResponseEntity.ok(message);
+    }
+
+    @DeleteMapping(path = "/{idConsommateur}/favoris/{idProduit}")
+    @Operation(
+            summary = "Retirer un produit des favoris",
+            description = "Permet à un consommateur de retirer un produit de sa liste de favoris"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Produit retiré des favoris"),
+            @ApiResponse(responseCode = "404", description = "Consommateur ou produit non trouvé")
+    })
+    public ResponseEntity<String> retirerDesFavoris(
+            @Parameter(description = "ID du consommateur", required = true)
+            @PathVariable int idConsommateur,
+            @Parameter(description = "ID du produit", required = true)
+            @PathVariable int idProduit) {
+        String message = consommateurService.retirerProduitDesFavoris(idConsommateur, idProduit);
+        return ResponseEntity.ok(message);
+    }
+
+    @GetMapping(path = "/{idConsommateur}/favoris")
+    @Operation(
+            summary = "Voir les favoris d'un consommateur",
+            description = "Retourne la liste de tous les produits favoris d'un consommateur"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Liste des favoris récupérée"),
+            @ApiResponse(responseCode = "404", description = "Consommateur non trouvé")
+    })
+    public ResponseEntity<List<Produit>> voirFavoris(
+            @Parameter(description = "ID du consommateur", required = true)
+            @PathVariable int idConsommateur) {
+        List<Produit> favoris = consommateurService.voirFavoris(idConsommateur);
+        return ResponseEntity.ok(favoris);
+    }
+
+    @GetMapping(path = "/{idConsommateur}/favoris/categorie/{categorieId}")
+    @Operation(
+            summary = "Rechercher les favoris par catégorie",
+            description = "Retourne la liste des produits favoris d'un consommateur filtrés par catégorie"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Liste des favoris filtrés par catégorie récupérée"),
+            @ApiResponse(responseCode = "404", description = "Consommateur non trouvé")
+    })
+    public ResponseEntity<List<Produit>> rechercherFavorisParCategorie(
+            @Parameter(description = "ID du consommateur", required = true)
+            @PathVariable int idConsommateur,
+            @Parameter(description = "ID de la catégorie", required = true)
+            @PathVariable int categorieId) {
+        List<Produit> favoris = consommateurService.rechercherFavorisParCategorie(idConsommateur, categorieId);
+        return ResponseEntity.ok(favoris);
+    }
+
+    @GetMapping(path = "/{idConsommateur}/recommandations")
+    @Operation(
+            summary = "Obtenir des recommandations de produits",
+            description = "Retourne des produits similaires basés sur les favoris du consommateur. " +
+                         "Les recommandations sont basées sur les catégories des produits favoris, " +
+                         "uniquement les produits en stock, excluent les produits déjà en favoris, " +
+                         "et sont triées par date d'ajout (nouveaux produits d'abord)."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Liste des produits recommandés récupérée"),
+            @ApiResponse(responseCode = "404", description = "Consommateur non trouvé")
+    })
+    public ResponseEntity<List<Produit>> obtenirRecommandations(
+            @Parameter(description = "ID du consommateur", required = true)
+            @PathVariable int idConsommateur) {
+        List<Produit> recommandations = consommateurService.recommanderProduits(idConsommateur);
+        return ResponseEntity.ok(recommandations);
     }
 }

@@ -5,5 +5,7 @@ public enum StatutCommande {
     EN_LIVRAISON,
     VALIDEE,
     LIVREE,
-    DECLINEE
+    DECLINEE,
+    REFUSEE,  // Alias pour DECLINEE, utilisé dans certains contextes
+    ANNULEE   // Pour les commandes annulées
 }
