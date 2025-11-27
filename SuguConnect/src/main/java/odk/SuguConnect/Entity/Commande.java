@@ -33,6 +33,7 @@ public class Commande {
     private List<CommandeProduit> commandeProduits = new ArrayList<>();
 
     private Double montantTotal;
+    private Double prixLivraison;
 
     @Convert(converter = StatutCommandeConverter.class)
     @Column(columnDefinition = "VARCHAR(50)")

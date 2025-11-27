@@ -214,15 +214,41 @@
             "quantite": "string (int)",
             "categorieId": "string (int)",
             "estBio": "string (boolean, optionnel, défaut: false)",
+            "seuilAlerte": "string (int, optionnel, défaut: 10) - Seuil d'alerte pour notification de stock faible",
             "photos": "List<MultipartFile> (1-4 photos)"
           }
         },
         {
           "method": "GET",
           "path": "/producteur/{producteurId}/produit",
-          "description": "Lister les produits d'un producteur",
+          "description": "Lister tous les produits d'un producteur",
           "authRequired": true,
-          "pathParams": ["producteurId"]
+          "pathParams": ["producteurId"],
+          "response": "List<Produit> (tous les produits du producteur)"
+        },
+        {
+          "method": "GET",
+          "path": "/producteur/{producteurId}/produit/en-stock",
+          "description": "Lister les produits en stock (stockDisponible > 0)",
+          "authRequired": true,
+          "pathParams": ["producteurId"],
+          "response": "List<Produit> (produits avec stock disponible > 0)"
+        },
+        {
+          "method": "GET",
+          "path": "/producteur/{producteurId}/produit/stock-faible",
+          "description": "Lister les produits avec stock faible (stockDisponible <= seuilAlerte mais > 0)",
+          "authRequired": true,
+          "pathParams": ["producteurId"],
+          "response": "List<Produit> (produits nécessitant un réapprovisionnement)"
+        },
+        {
+          "method": "GET",
+          "path": "/producteur/{producteurId}/produit/epuises",
+          "description": "Lister les produits épuisés (stockDisponible = 0)",
+          "authRequired": true,
+          "pathParams": ["producteurId"],
+          "response": "List<Produit> (produits sans stock disponible)"
         },
         {
           "method": "GET",
@@ -246,6 +272,7 @@
             "unite": "string?",
             "quantite": "string?",
             "estBio": "string (boolean, optionnel)",
+            "seuilAlerte": "string (int, optionnel) - Seuil d'alerte pour notification de stock faible",
             "photos": "List<MultipartFile>? (max 4)"
           }
         },
@@ -257,12 +284,47 @@
           "pathParams": ["producteurId", "produitId"]
         },
         {
+          "method": "GET",
+          "path": "/producteur/{producteurId}/commandes",
+          "description": "Récupérer toutes les commandes d'un producteur",
+          "authRequired": true,
+          "pathParams": ["producteurId"],
+          "response": "List<Commande> (commandes complètes avec produits, consommateur, paiement, etc.)"
+        },
+        {
           "method": "PUT",
           "path": "/producteur/commande/{commandeId}/statut",
-          "description": "Changer le statut d'une commande",
+          "description": "Changer le statut d'une commande (accepter, refuser, mettre en livraison, marquer comme livrée). Si le statut est LIVREE, le livreurId est obligatoire et le consommateur recevra une notification avec les informations du livreur et le prix de livraison.",
           "authRequired": true,
           "pathParams": ["commandeId"],
-          "queryParams": ["producteurId", "nouveauStatut", "motifRejet?"]
+          "queryParams": ["producteurId", "nouveauStatut (VALIDEE, REFUSEE, EN_LIVRAISON, LIVREE)", "motifRejet? (obligatoire si REFUSEE)", "livreurId? (obligatoire si statut = LIVREE)", "prixLivraison? (optionnel, calculé automatiquement si non fourni)"],
+          "notes": [
+            "VALIDEE : Accepter la commande",
+            "REFUSEE/DECLINEE : Refuser la commande (motifRejet obligatoire)",
+            "EN_LIVRAISON : Commande en cours de livraison",
+            "LIVREE : Commande livrée (livreurId obligatoire, notification envoyée au consommateur avec infos livreur et prix)"
+          ]
+        },
+        {
+          "method": "GET",
+          "path": "/producteur/{producteurId}/livreurs/disponibles",
+          "description": "Récupérer les livreurs disponibles pour la livraison",
+          "authRequired": true,
+          "pathParams": ["producteurId"],
+          "response": "List<LivreurResponseDTO> (livreurs disponibles)"
+        },
+        {
+          "method": "PUT",
+          "path": "/producteur/commande/{commandeId}/livreur",
+          "description": "Assigner un livreur à une commande pour la livraison. Le consommateur recevra une notification avec les informations du livreur et le prix de livraison.",
+          "authRequired": true,
+          "pathParams": ["commandeId"],
+          "queryParams": ["producteurId", "livreurId", "prixLivraison? (optionnel, calculé automatiquement si non fourni)"],
+          "notes": [
+            "Le livreur doit être disponible",
+            "Le producteur doit être propriétaire de la commande",
+            "Le consommateur recevra une notification : 'Commande #X, faite le [date], sera livrée par [nom_livreur] et prix de la livraison est : [prix] FCFA'"
+          ]
         },
         {
           "method": "POST",

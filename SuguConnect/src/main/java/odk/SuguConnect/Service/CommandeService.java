@@ -11,6 +11,7 @@ import odk.SuguConnect.Enums.StatutCommande;
 import odk.SuguConnect.Enums.StatutPaiement;
 import odk.SuguConnect.Enums.TypeMessage;
 import odk.SuguConnect.Repository.*;
+import odk.SuguConnect.Entity.Livreur;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +29,7 @@ public class CommandeService {
     private final PanierRepository panierRepository;
     private final PanierProduitRepository panierProduitRepository;
     private final NotificationService notificationService;
+    private final LivreurRepository livreurRepository;
 
     @Transactional
     public Commande passerCommande(int idConsommateur, PasserCommandePanierDTO request) {
@@ -60,12 +62,11 @@ public class CommandeService {
      * Passer une commande avec des produits spécifiques (sans utiliser le panier)
      * Permet au consommateur de choisir directement les produits à commander
      */
+    @Transactional(readOnly = true)
     public List<Commande> getCommandesParProducteur(int producteurId) {
-        // Récupérer toutes les commandes contenant au moins un produit du producteur
-        return commandeRepository.findAll().stream()
-                .filter(cmd -> cmd.getCommandeProduits().stream()
-                        .anyMatch(cp -> cp.getProduit().getProducteur().getId() == producteurId))
-                .toList();
+        // Utiliser la méthode optimisée avec JOIN FETCH pour charger toutes les relations
+        // Cela évite les problèmes de lazy loading et garantit que toutes les données sont chargées
+        return commandeRepository.findByProducteurWithRelations(producteurId);
     }
     public int countCommandesParConsommateur(Long consommateurId) {
         return commandeRepository.countByConsommateurId(consommateurId); // méthode JPA
@@ -105,18 +106,68 @@ public class CommandeService {
                 .toList();
     }
     @Transactional
-    public Commande changerStatutCommande(int commandeId, int producteurId, StatutCommande nouveauStatut, String motifRejet) {
+    public Commande changerStatutCommande(int commandeId, int producteurId, StatutCommande nouveauStatut, String motifRejet, Integer livreurId, Double prixLivraison) {
         Commande commande = findCommandeById(commandeId);
         verifierProprietaireCommande(commande, producteurId);
         
         // Mettre à jour le statut
         commande.setStatutCommande(nouveauStatut);
-        if (nouveauStatut == StatutCommande.DECLINEE) {
+        if (nouveauStatut == StatutCommande.DECLINEE || nouveauStatut == StatutCommande.REFUSEE) {
             commande.setMotifRejet(motifRejet);
         }
         
-        // Notifier selon le statut
-        notifierChangementStatut(commande, nouveauStatut, motifRejet);
+        // Si le statut est LIVREE et qu'un livreur est fourni, l'assigner
+        if (nouveauStatut == StatutCommande.LIVREE && livreurId != null) {
+            Livreur livreur = livreurRepository.findById(livreurId)
+                    .orElseThrow(() -> new EntityNotFoundException("Livreur non trouvé"));
+            
+            if (!livreur.isDisponible()) {
+                throw new IllegalArgumentException("Le livreur sélectionné n'est pas disponible");
+            }
+            
+            commande.setLivreurPrefere(livreur);
+            
+            // Définir le prix de livraison
+            if (prixLivraison == null || prixLivraison <= 0) {
+                prixLivraison = Math.max(commande.getMontantTotal() * 0.10, 500.0);
+            }
+            commande.setPrixLivraison(prixLivraison);
+            
+            // Envoyer la notification au consommateur
+            notifierLivraisonAssignee(commande, livreur, prixLivraison);
+        } else {
+            // Notifier selon le statut (sauf si LIVREE avec livreur, déjà notifié)
+            notifierChangementStatut(commande, nouveauStatut, motifRejet);
+        }
+        
+        return commandeRepository.save(commande);
+    }
+
+    @Transactional
+    public Commande assignerLivreurACommande(int commandeId, int producteurId, int livreurId, Double prixLivraison) {
+        Commande commande = findCommandeById(commandeId);
+        verifierProprietaireCommande(commande, producteurId);
+        
+        // Vérifier que le livreur existe et est disponible
+        Livreur livreur = livreurRepository.findById(livreurId)
+                .orElseThrow(() -> new EntityNotFoundException("Livreur non trouvé"));
+        
+        if (!livreur.isDisponible()) {
+            throw new IllegalArgumentException("Le livreur sélectionné n'est pas disponible");
+        }
+        
+        // Assigner le livreur à la commande
+        commande.setLivreurPrefere(livreur);
+        
+        // Définir le prix de livraison (utiliser une valeur par défaut si non fourni)
+        if (prixLivraison == null || prixLivraison <= 0) {
+            // Prix par défaut : 10% du montant total ou minimum 500 FCFA
+            prixLivraison = Math.max(commande.getMontantTotal() * 0.10, 500.0);
+        }
+        commande.setPrixLivraison(prixLivraison);
+        
+        // Envoyer la notification au consommateur
+        notifierLivraisonAssignee(commande, livreur, prixLivraison);
         
         return commandeRepository.save(commande);
     }
@@ -349,11 +400,41 @@ public class CommandeService {
         int commandeId = commande.getIdCommande();
         
         switch (nouveauStatut) {
-            case DECLINEE -> notificationService.notifierCommandeRefusee(consommateurId, commandeId, motifRejet);
+            case DECLINEE, REFUSEE -> notificationService.notifierCommandeRefusee(consommateurId, commandeId, motifRejet);
             case VALIDEE -> notificationService.notifierCommandeValidee(consommateurId, commandeId);
             case EN_LIVRAISON -> notificationService.notifierCommandeEnLivraison(consommateurId, commandeId);
-            case LIVREE -> notificationService.notifierCommandeLivree(consommateurId, commandeId);
+            case LIVREE -> {
+                // Pour LIVREE, la notification sera envoyée lors de l'assignation du livreur
+                // On ne notifie pas ici si un livreur n'est pas encore assigné
+                if (commande.getLivreurPrefere() != null && commande.getPrixLivraison() != null) {
+                    notifierLivraisonAssignee(commande, commande.getLivreurPrefere(), commande.getPrixLivraison());
+                }
+            }
+            default -> {
+                // Pas de notification pour les autres statuts
+            }
         }
+    }
+    
+    private void notifierLivraisonAssignee(Commande commande, Livreur livreur, Double prixLivraison) {
+        int consommateurId = commande.getConsommateur().getId();
+        int commandeId = commande.getIdCommande();
+        String nomLivreur = livreur.getPrenom() + " " + livreur.getNom();
+        String dateCommande = commande.getDateCommande().toString();
+        
+        String message = String.format(
+            "Commande #%d, faite le %s, sera livrée par %s et prix de la livraison est : %.2f FCFA",
+            commandeId, dateCommande, nomLivreur, prixLivraison
+        );
+        
+        String action = "/commandes/" + commandeId;
+        notificationService.creerNotification(
+            consommateurId,
+            TypeMessage.COMMANDE_EN_LIVRAISON,
+            message,
+            action,
+            168
+        );
     }
     
     private void verifierProprietaireReception(Commande commande, int consommateurId) {
