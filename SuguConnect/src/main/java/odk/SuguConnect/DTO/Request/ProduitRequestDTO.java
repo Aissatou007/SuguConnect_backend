@@ -29,6 +29,9 @@ public record ProduitRequestDTO(
         @Schema(description = "ID de la catégorie", example = "1")
         int categorieId,
         
+        @Schema(description = "Indique si le produit est biologique", example = "true")
+        Boolean estBio,
+        
         @Schema(description = "URLs des photos du produit")
         List<String> photos
 ) {

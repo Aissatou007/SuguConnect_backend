@@ -25,14 +25,46 @@ SuguConnect est une plateforme de mise en relation entre producteurs et consomma
 
 ### Base de données
 
-1. Créer une base de données MySQL nommée `suguConnectDB`
-2. Configurer les paramètres de connexion dans `src/main/resources/application.properties` :
+1. **Installer et démarrer MySQL** sur votre machine
+2. **Configurer le mot de passe MySQL** - Vous avez 3 options :
 
-```properties
-spring.datasource.url=jdbc:mysql://localhost:3306/suguConnectDB
-spring.datasource.username=root
-spring.datasource.password=VotreMotDePasse
+#### Option 1 : Variables d'environnement (Recommandé)
+Définissez les variables d'environnement avant de lancer l'application :
+
+**Windows (PowerShell):**
+```powershell
+$env:DB_USERNAME="root"
+$env:DB_PASSWORD="votre_mot_de_passe_mysql"
 ```
+
+**Windows (CMD):**
+```cmd
+set DB_USERNAME=root
+set DB_PASSWORD=votre_mot_de_passe_mysql
+```
+
+**Linux/Mac:**
+```bash
+export DB_USERNAME=root
+export DB_PASSWORD=votre_mot_de_passe_mysql
+```
+
+#### Option 2 : Fichier application-local.properties
+1. Copiez `application-local.properties.example` vers `application-local.properties`
+2. Modifiez le fichier et ajoutez votre mot de passe :
+```properties
+spring.datasource.password=votre_mot_de_passe_mysql
+```
+
+#### Option 3 : Directement dans application.properties
+Modifiez directement `src/main/resources/application.properties` :
+```properties
+spring.datasource.url=jdbc:mysql://localhost:3306/suguConnectDB?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC
+spring.datasource.username=root
+spring.datasource.password=votre_mot_de_passe_mysql
+```
+
+**⚠️ IMPORTANT :** La base de données `suguConnectDB` sera créée automatiquement si elle n'existe pas (grâce à `createDatabaseIfNotExist=true`).
 
 ### Administrateur par défaut
 

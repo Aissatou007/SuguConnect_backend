@@ -58,6 +58,13 @@ public class ProducteurService {
         producteurRepository.delete(producteur);
         return "Le compte a été supprimé avec succès";
     }
+    
+    // Mettre à jour la photo de profil
+    public void mettreAJourPhotoProfil(int producteurId, String photoUrl) {
+        Producteur producteur = findProducteurById(producteurId);
+        producteur.setPhotoUrl(photoUrl);
+        producteurRepository.save(producteur);
+    }
 
     private void verifierCompteNonExistant(String telephone) {
         if (producteurRepository.findByTelephone(telephone) != null) {

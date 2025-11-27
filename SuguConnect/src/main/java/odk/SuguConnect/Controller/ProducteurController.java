@@ -16,6 +16,7 @@ import odk.SuguConnect.Entity.Categorie;
 import odk.SuguConnect.Entity.Commande;
 import odk.SuguConnect.Entity.Produit;
 import odk.SuguConnect.Enums.StatutCommande;
+import odk.SuguConnect.Repository.ProduitRepository;
 import odk.SuguConnect.Service.CommandeService;
 import odk.SuguConnect.Service.FileStorageService;
 import odk.SuguConnect.Service.ProducteurService;
@@ -26,6 +27,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import jakarta.persistence.EntityNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +41,7 @@ public class ProducteurController {
     private final FileStorageService fileStorageService;
     private final CommandeService commandeService;
     private final odk.SuguConnect.Service.ProduitService produitService;  // Ajout du ProduitService pour respecter SRP
+    private final ProduitRepository produitRepository;
 
     @PostMapping(path = "/inscription")
     @Operation(
@@ -141,6 +144,7 @@ public class ProducteurController {
             @RequestPart(value = "unite") String unite,
             @RequestPart(value = "quantite") String quantite,
             @RequestPart(value = "categorieId") String categorieId,
+            @RequestPart(value = "estBio", required = false) String estBio,
             @Parameter(
                     description = "Photos du produit (minimum 1, maximum 4). Pour ajouter plusieurs fichiers, sélectionnez ce champ plusieurs fois.",
                     required = true,
@@ -171,15 +175,32 @@ public class ProducteurController {
 
         // Sauvegarder les photos et obtenir les URLs
         List<String> photoUrls = new ArrayList<>();
-        for (MultipartFile photo : photos) {
-            if (!photo.isEmpty()) {
-                String fileName = fileStorageService.storeFile(photo);
-                String fileDownloadUri = ServletUriComponentsBuilder.fromCurrentContextPath()
-                        .path("/suguconnect/files/download/")
-                        .path(fileName)
-                        .toUriString();
-                photoUrls.add(fileDownloadUri);
+        try {
+            for (MultipartFile photo : photos) {
+                if (photo != null && !photo.isEmpty()) {
+                    String fileName = fileStorageService.storeFile(photo);
+                    String fileDownloadUri = ServletUriComponentsBuilder.fromCurrentContextPath()
+                            .path("/suguconnect/files/download/")
+                            .path(fileName)
+                            .toUriString();
+                    photoUrls.add(fileDownloadUri);
+                    System.out.println("Photo sauvegardée: " + fileName + " -> " + fileDownloadUri);
+                } else {
+                    System.out.println("Photo vide ignorée");
+                }
             }
+            
+            // Vérifier qu'au moins une photo a été sauvegardée
+            if (photoUrls.isEmpty()) {
+                return ResponseEntity.badRequest().body("Aucune photo valide n'a pu être sauvegardée. Veuillez vérifier que les fichiers ne sont pas vides.");
+            }
+            
+            System.out.println("Nombre de photos sauvegardées: " + photoUrls.size());
+        } catch (Exception e) {
+            System.err.println("Erreur lors de la sauvegarde des photos: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Erreur lors de la sauvegarde des photos: " + e.getMessage());
         }
 
         // Créer le produit
@@ -190,6 +211,15 @@ public class ProducteurController {
         produit.setUnite(odk.SuguConnect.Enums.Unite.valueOf(unite.toUpperCase()));
         produit.setQuantite(quantiteInt);
         produit.setPhotos(photoUrls);
+        
+        System.out.println("Produit créé avec " + produit.getPhotos().size() + " photos");
+        
+        // Définir si le produit est bio (par défaut false si non fourni)
+        if (estBio != null && !estBio.trim().isEmpty()) {
+            produit.setEstBio(Boolean.parseBoolean(estBio));
+        } else {
+            produit.setEstBio(false);
+        }
 
         // Associer la catégorie
         Categorie categorie = new Categorie();
@@ -296,15 +326,27 @@ public class ProducteurController {
             @RequestPart(value = "prixUnitaire", required = false) String prixUnitaire,
             @RequestPart(value = "unite", required = false) String unite,
             @RequestPart(value = "quantite", required = false) String quantite,
+            @RequestPart(value = "estBio", required = false) String estBio,
             @Parameter(
                     description = "Nouvelles photos du produit (optionnel, maximum 4). Pour plusieurs fichiers, sélectionnez ce champ plusieurs fois.",
                     content = @Content(mediaType = "multipart/form-data")
             )
             @RequestPart(value = "photos", required = false) List<MultipartFile> photos) {
 
-        // Créer le produit modifié
+        // Récupérer le produit existant pour préserver les valeurs non modifiées
+        Produit produitExistant = produitRepository.findById(produitId)
+                .orElseThrow(() -> new EntityNotFoundException("Produit non trouvé"));
+        
+        // Vérifier que le producteur est le propriétaire
+        if (produitExistant.getProducteur().getId() != producteurId) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Vous n'êtes pas autorisé à modifier ce produit");
+        }
+        
+        // Créer le produit modifié avec les valeurs existantes préservées
         Produit produitModifie = new Produit();
         produitModifie.setId(produitId);
+        // Préserver la valeur existante de estBio par défaut
+        produitModifie.setEstBio(produitExistant.isEstBio());
 
         try {
             if (nom != null) produitModifie.setNom(nom);
@@ -312,6 +354,10 @@ public class ProducteurController {
             if (prixUnitaire != null) produitModifie.setPrixUnitaire(Float.parseFloat(prixUnitaire));
             if (unite != null) produitModifie.setUnite(odk.SuguConnect.Enums.Unite.valueOf(unite.toUpperCase()));
             if (quantite != null) produitModifie.setQuantite(Integer.parseInt(quantite));
+            // Mettre à jour estBio seulement si explicitement fourni
+            if (estBio != null && !estBio.trim().isEmpty()) {
+                produitModifie.setEstBio(Boolean.parseBoolean(estBio));
+            }
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body("Format de données invalide: " + e.getMessage());
         }
@@ -382,5 +428,55 @@ public class ProducteurController {
 
         Commande commande = commandeService.changerStatutCommande(commandeId, producteurId, nouveauStatut, motifRejet);
         return ResponseEntity.ok(commande);
+    }
+
+    @PostMapping(path = "/{producteurId}/photo-profil", consumes = {"multipart/form-data"})
+    @Operation(
+            summary = "Ajouter ou modifier la photo de profil",
+            description = "Permet à un producteur d'uploader ou de modifier sa photo de profil"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Photo de profil mise à jour avec succès"),
+            @ApiResponse(responseCode = "400", description = "Fichier invalide ou vide"),
+            @ApiResponse(responseCode = "403", description = "Non autorisé"),
+            @ApiResponse(responseCode = "404", description = "Producteur non trouvé")
+    })
+    public ResponseEntity<Map<String, String>> uploadPhotoProfil(
+            @Parameter(description = "ID du producteur", required = true)
+            @PathVariable int producteurId,
+            @Parameter(
+                    description = "Photo de profil du producteur",
+                    required = true,
+                    content = @Content(mediaType = "multipart/form-data")
+            )
+            @RequestPart(value = "photo") MultipartFile photo) {
+        
+        if (photo == null || photo.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Photo requise"));
+        }
+
+        try {
+            // Sauvegarder la photo
+            String fileName = fileStorageService.storeFile(photo);
+            String fileDownloadUri = ServletUriComponentsBuilder.fromCurrentContextPath()
+                    .path("/suguconnect/files/download/")
+                    .path(fileName)
+                    .toUriString();
+
+            // Mettre à jour la photo de profil du producteur
+            producteurService.mettreAJourPhotoProfil(producteurId, fileDownloadUri);
+
+            return ResponseEntity.ok(Map.of(
+                    "message", "Photo de profil mise à jour avec succès",
+                    "photoUrl", fileDownloadUri,
+                    "producteurId", String.valueOf(producteurId)
+            ));
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Erreur lors de l'upload de la photo: " + e.getMessage()));
+        }
     }
 }

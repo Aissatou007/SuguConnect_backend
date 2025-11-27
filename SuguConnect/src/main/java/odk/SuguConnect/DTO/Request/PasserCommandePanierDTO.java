@@ -16,8 +16,14 @@ public record PasserCommandePanierDTO(
         @Schema(
                 description = "Mode de paiement choisi",
                 example = "ORANGE_MONEY",
-                allowableValues = {"ORANGE_MONEY", "WAVE", "ESPECES"}
+                allowableValues = {"ORANGE_MONEY", "WAVE", "ESPECES", "MOBILE_MONEY"}
         )
-        ModePaiement modePaiement
+        ModePaiement modePaiement,
+        
+        @Schema(
+                description = "Numéro de téléphone pour paiement mobile (requis si modePaiement = ORANGE_MONEY, WAVE ou MOBILE_MONEY)",
+                example = "70123456"
+        )
+        String numeroTelephone
 ) {
 }

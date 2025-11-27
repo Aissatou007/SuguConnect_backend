@@ -71,7 +71,10 @@ public class PaiementController {
     @PutMapping(path = "/{id}/valider")
     @Operation(
             summary = "Valider un paiement",
-            description = "Marque un paiement comme validé (VALIDE). Utilisé pour les paiements en espèces ou après confirmation manuelle."
+            description = "Marque un paiement comme validé (VALIDE). " +
+                         "Pour les paiements en espèces, la validation est automatique lors de la création de la commande. " +
+                         "Cet endpoint est principalement utilisé par les administrateurs pour valider manuellement un paiement " +
+                         "ou pour les paiements mobiles qui ont été confirmés via webhook."
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Paiement validé avec succès"),
@@ -129,14 +132,17 @@ public class PaiementController {
     
     @PostMapping(path = "/{id}/initier-mobile")
     @Operation(
-            summary = "Initier un paiement mobile",
-            description = "Initie un paiement via Orange Money ou Wave. Le consommateur recevra une notification push pour confirmer le paiement."
+            summary = "[DEPRECATED] Initier un paiement mobile",
+            description = "DEPRECATED: Le paiement mobile est maintenant initié automatiquement lors de la création de la commande. " +
+                         "Cet endpoint est conservé pour compatibilité mais ne devrait plus être utilisé. " +
+                         "Utilisez plutôt l'endpoint de création de commande avec le numéro de téléphone dans le DTO."
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Paiement initié avec succès"),
             @ApiResponse(responseCode = "400", description = "Paiement ne peut pas être initié"),
             @ApiResponse(responseCode = "404", description = "Paiement non trouvé")
     })
+    @Deprecated
     public ResponseEntity<Map<String, String>> initierPaiementMobile(
             @Parameter(description = "ID du paiement", required = true)
             @PathVariable int id,
@@ -147,7 +153,9 @@ public class PaiementController {
         return ResponseEntity.ok(Map.of(
             "message", message,
             "statut", "EN_ATTENTE",
-            "paiementId", String.valueOf(id)
+            "paiementId", String.valueOf(id),
+            "deprecated", "true",
+            "note", "Utilisez l'endpoint de création de commande avec numeroTelephone dans le DTO"
         ));
     }
     

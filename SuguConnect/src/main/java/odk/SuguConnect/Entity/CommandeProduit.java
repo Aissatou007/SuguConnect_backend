@@ -25,7 +25,7 @@ public class CommandeProduit {
 
     @ManyToOne
     @JoinColumn(name = "commande_id")
-    @JsonBackReference // ✅ évite la boucle Commande ↔ CommandeProduit
+    @JsonBackReference //  évite la boucle Commande ↔ CommandeProduit
     private Commande commande;
 
     private int quantite;

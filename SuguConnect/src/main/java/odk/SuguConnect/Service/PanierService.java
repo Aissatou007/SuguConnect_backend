@@ -13,6 +13,7 @@ import odk.SuguConnect.Repository.ProduitRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -56,16 +57,33 @@ public class PanierService {
         return "Produit retiré du panier avec succès.";
     }
     
+    @Transactional(readOnly = true)
     public Panier voirPanier(int consommateurId) {
         Consommateur consommateur = findConsommateurById(consommateurId);
         Panier panier = consommateur.getPanier();
 
         if (panier == null) {
-
             panier = new Panier();
             panier.setConsommateur(consommateur);
             panier = panierRepository.save(panier);
             consommateur.setPanier(panier);
+        } else {
+            // Charger explicitement les panierProduits avec leurs relations
+            List<PanierProduit> panierProduits = panierProduitRepository.findByPanierId(panier.getId());
+            panier.setPanierProduits(panierProduits);
+            
+            // Forcer le chargement des relations pour éviter les problèmes de lazy loading
+            panierProduits.forEach(pp -> {
+                if (pp.getProduit() != null) {
+                    // Accéder aux propriétés pour forcer le chargement
+                    pp.getProduit().getId();
+                    pp.getProduit().getNom();
+                    if (pp.getProduit().getProducteur() != null) {
+                        pp.getProduit().getProducteur().getId();
+                        pp.getProduit().getProducteur().getNom();
+                    }
+                }
+            });
         }
         
         return panier;

@@ -75,6 +75,13 @@ public class ConsommateurService {
                 .toList();
     }
 
+    public List<Produit> voirProduitsDisponiblesParCategorie(int categorieId) {
+        List<Produit> produits = produitRepository.findByCategorieId(categorieId);
+        return produits.stream()
+                .filter(produit -> produit.getStockDisponible() > 0)
+                .toList();
+    }
+
     private void verifierCompteNonExistant(String telephone) {
         if (consommateurRepository.findByTelephone(telephone) != null) {
             throw new IllegalArgumentException("Ce compte existe déjà");
@@ -111,5 +118,125 @@ public class ConsommateurService {
         if (dto.motDePasse() != null && !dto.motDePasse().isEmpty()) {
             consommateur.setMotDePasse(passwordEncoder.encode(dto.motDePasse()));
         }
+    }
+
+    // ========== Gestion des favoris ==========
+    
+    @org.springframework.transaction.annotation.Transactional
+    public String ajouterProduitAuxFavoris(int consommateurId, int produitId) {
+        Consommateur consommateur = findConsommateurById(consommateurId);
+        Produit produit = produitRepository.findById(produitId)
+                .orElseThrow(() -> new EntityNotFoundException("Produit introuvable"));
+
+        // Initialiser la liste si elle est null
+        if (consommateur.getProduit() == null) {
+            consommateur.setProduit(new java.util.ArrayList<>());
+        }
+
+        // Vérifier si le produit est déjà dans les favoris
+        if (consommateur.getProduit().contains(produit)) {
+            return "Ce produit est déjà dans vos favoris";
+        }
+
+        consommateur.getProduit().add(produit);
+        consommateurRepository.save(consommateur);
+        return String.format("Produit %s ajouté aux favoris avec succès", produit.getNom());
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public String retirerProduitDesFavoris(int consommateurId, int produitId) {
+        Consommateur consommateur = findConsommateurById(consommateurId);
+        Produit produit = produitRepository.findById(produitId)
+                .orElseThrow(() -> new EntityNotFoundException("Produit introuvable"));
+
+        if (consommateur.getProduit() == null || !consommateur.getProduit().contains(produit)) {
+            return "Ce produit n'est pas dans vos favoris";
+        }
+
+        consommateur.getProduit().remove(produit);
+        consommateurRepository.save(consommateur);
+        return String.format("Produit %s retiré des favoris avec succès", produit.getNom());
+    }
+
+    public List<Produit> voirFavoris(int consommateurId) {
+        Consommateur consommateur = findConsommateurById(consommateurId);
+        if (consommateur.getProduit() == null) {
+            return new java.util.ArrayList<>();
+        }
+        return consommateur.getProduit();
+    }
+
+    public List<Produit> rechercherFavorisParCategorie(int consommateurId, int categorieId) {
+        Consommateur consommateur = findConsommateurById(consommateurId);
+        if (consommateur.getProduit() == null) {
+            return new java.util.ArrayList<>();
+        }
+        
+        // Filtrer les favoris par catégorie
+        return consommateur.getProduit().stream()
+                .filter(produit -> produit.getCategorie() != null && 
+                                  produit.getCategorie().getId() == categorieId)
+                .toList();
+    }
+
+    /**
+     * Recommande des produits similaires basés sur les favoris du consommateur
+     * 
+     * Règles :
+     * 1. Prioriser les produits des mêmes catégories que les favoris
+     * 2. Uniquement les produits en stock (stockDisponible > 0)
+     * 3. Exclure les produits déjà en favoris
+     * 4. Trier par ID décroissant (nouveaux produits d'abord)
+     */
+    public List<Produit> recommanderProduits(int consommateurId) {
+        Consommateur consommateur = findConsommateurById(consommateurId);
+        
+        // Si le consommateur n'a pas de favoris, retourner une liste vide
+        if (consommateur.getProduit() == null || consommateur.getProduit().isEmpty()) {
+            return new java.util.ArrayList<>();
+        }
+
+        // 1. Extraire les IDs des catégories des produits favoris
+        List<Integer> categoriesIds = consommateur.getProduit().stream()
+                .filter(produit -> produit.getCategorie() != null)
+                .map(produit -> produit.getCategorie().getId())
+                .distinct()
+                .toList();
+
+        if (categoriesIds.isEmpty()) {
+            return new java.util.ArrayList<>();
+        }
+
+        // 2. Récupérer tous les produits en stock des catégories des favoris
+        List<Produit> produitsRecommandes = new java.util.ArrayList<>();
+        for (Integer categorieId : categoriesIds) {
+            List<Produit> produitsCategorie = produitRepository.findByCategorieId(categorieId);
+            produitsRecommandes.addAll(produitsCategorie);
+        }
+
+        // 3. Filtrer : uniquement produits en stock
+        produitsRecommandes = produitsRecommandes.stream()
+                .filter(produit -> produit.getStockDisponible() > 0)
+                .toList();
+
+        // 4. Exclure les produits déjà en favoris
+        List<Integer> favorisIds = consommateur.getProduit().stream()
+                .map(Produit::getId)
+                .toList();
+        
+        produitsRecommandes = produitsRecommandes.stream()
+                .filter(produit -> !favorisIds.contains(produit.getId()))
+                .toList();
+
+        // 5. Trier par ID décroissant (nouveaux produits d'abord)
+        // Les produits avec un ID plus élevé sont généralement plus récents
+        produitsRecommandes = produitsRecommandes.stream()
+                .sorted((p1, p2) -> Integer.compare(p2.getId(), p1.getId()))
+                .toList();
+
+        // Supprimer les doublons (au cas où un produit serait dans plusieurs catégories)
+        return produitsRecommandes.stream()
+                .distinct()
+                .toList();
     }
 }

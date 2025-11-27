@@ -213,6 +213,7 @@
             "unite": "string (enum)",
             "quantite": "string (int)",
             "categorieId": "string (int)",
+            "estBio": "string (boolean, optionnel, défaut: false)",
             "photos": "List<MultipartFile> (1-4 photos)"
           }
         },
@@ -244,6 +245,7 @@
             "prixUnitaire": "string?",
             "unite": "string?",
             "quantite": "string?",
+            "estBio": "string (boolean, optionnel)",
             "photos": "List<MultipartFile>? (max 4)"
           }
         },
@@ -261,6 +263,17 @@
           "authRequired": true,
           "pathParams": ["commandeId"],
           "queryParams": ["producteurId", "nouveauStatut", "motifRejet?"]
+        },
+        {
+          "method": "POST",
+          "path": "/producteur/{producteurId}/photo-profil",
+          "description": "Ajouter ou modifier la photo de profil d'un producteur",
+          "authRequired": true,
+          "pathParams": ["producteurId"],
+          "contentType": "multipart/form-data",
+          "formData": {
+            "photo": "MultipartFile (photo de profil)"
+          }
         }
       ]
     },
@@ -318,6 +331,14 @@
           "queryParams": ["nom"]
         },
         {
+          "method": "GET",
+          "path": "/consommateur/produits/categorie/{categorieId}",
+          "description": "Récupérer les produits disponibles d'une catégorie",
+          "authRequired": false,
+          "pathParams": ["categorieId"],
+          "response": "List<Produit> (uniquement produits avec stock > 0)"
+        },
+        {
           "method": "POST",
           "path": "/consommateur/{idConsommateur}/panier/ajouter/{idProduit}",
           "description": "Ajouter un produit au panier",
@@ -345,6 +366,50 @@
           "description": "Voir les commandes du consommateur",
           "authRequired": true,
           "pathParams": ["idConsommateur"]
+        },
+        {
+          "method": "POST",
+          "path": "/consommateur/{idConsommateur}/favoris/{idProduit}",
+          "description": "Ajouter un produit aux favoris",
+          "authRequired": true,
+          "pathParams": ["idConsommateur", "idProduit"]
+        },
+        {
+          "method": "DELETE",
+          "path": "/consommateur/{idConsommateur}/favoris/{idProduit}",
+          "description": "Retirer un produit des favoris",
+          "authRequired": true,
+          "pathParams": ["idConsommateur", "idProduit"]
+        },
+        {
+          "method": "GET",
+          "path": "/consommateur/{idConsommateur}/favoris",
+          "description": "Voir les favoris d'un consommateur",
+          "authRequired": true,
+          "pathParams": ["idConsommateur"],
+          "response": "List<Produit>"
+        },
+        {
+          "method": "GET",
+          "path": "/consommateur/{idConsommateur}/favoris/categorie/{categorieId}",
+          "description": "Rechercher les favoris par catégorie",
+          "authRequired": true,
+          "pathParams": ["idConsommateur", "categorieId"],
+          "response": "List<Produit> (favoris filtrés par catégorie)"
+        },
+        {
+          "method": "GET",
+          "path": "/consommateur/{idConsommateur}/recommandations",
+          "description": "Obtenir des recommandations de produits basées sur les favoris",
+          "authRequired": true,
+          "pathParams": ["idConsommateur"],
+          "response": "List<Produit> (produits recommandés)",
+          "rules": [
+            "Prioriser les produits des mêmes catégories que les favoris",
+            "Uniquement les produits en stock (stockDisponible > 0)",
+            "Exclure les produits déjà en favoris",
+            "Trier par date d'ajout (nouveaux produits d'abord)"
+          ]
         },
         {
           "method": "POST",

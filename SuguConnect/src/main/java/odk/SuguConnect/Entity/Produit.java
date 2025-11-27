@@ -27,9 +27,13 @@ public class Produit {
     private float prixUnitaire ;
     private Unite unite ;
     private int stockDisponible ;
-    @ElementCollection
+    @Column(name = "est_bio", nullable = false)
+    private boolean estBio = false;
+    @Column(name = "seuil_alerte", nullable = false)
+    private int seuilAlerte = 10; // Valeur par défaut : alerte quand stock < 10
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "produit_photos", joinColumns = @JoinColumn(name = "produit_id"))
-    @Column(name = "photo_url")
+    @Column(name = "photo_url", length = 500)
     private List<String> photos = new ArrayList<>();
     @ManyToOne
     @JoinColumn(name = "producteur_id")
