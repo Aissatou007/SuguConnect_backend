@@ -36,8 +36,8 @@ public class Message {
     
     private LocalDateTime timestamp;
     
-    @Column(name = "is_read", columnDefinition = "boolean default false")
-    private boolean isRead = false;
+    @Column(name = "lu", nullable = false)
+    private boolean isRead;
     
     private String filePath;
     
@@ -45,6 +45,16 @@ public class Message {
     @ManyToOne
     @JoinColumn(name = "conversation_id")
     private Conversation conversation;
+    
+    @PrePersist
+    protected void onCreate() {
+        if (timestamp == null) {
+            timestamp = LocalDateTime.now();
+        }
+        // FORCER isRead à false - ne pas utiliser de valeur par défaut
+        // Cela garantit que Hibernate inclut toujours la colonne dans l'INSERT
+        this.isRead = false;
+    }
     
     public enum MessageType {
         TEXT, VOICE, IMAGE, FILE

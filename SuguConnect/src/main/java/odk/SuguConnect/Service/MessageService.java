@@ -61,9 +61,14 @@ public class MessageService {
             message.setContent(content);
             message.setType(messageType);
             message.setTimestamp(LocalDateTime.now());
+            // Forcer explicitement isRead à false pour garantir qu'il est inclus dans l'INSERT
             message.setRead(false);
             
+            // Vérification avant sauvegarde
+            System.out.println("Message avant sauvegarde - isRead: " + message.isRead());
+            
             Message savedMessage = messageRepository.save(message);
+            System.out.println("Message après sauvegarde - isRead: " + savedMessage.isRead());
             System.out.println("Message sauvegardé avec ID: " + savedMessage.getIdMessage());
             System.out.println("=== Fin sendMessage ===");
             return savedMessage;
@@ -202,19 +207,27 @@ public class MessageService {
     // ========== Méthodes privées utilitaires ==========
 
     private Utilisateur findUserById(int id) {
+        System.out.println("=== Recherche utilisateur ID: " + id + " ===");
+        
         // Vérifier d'abord dans le repository des consommateurs
         Consommateur consommateur = consommateurRepository.findById(id).orElse(null);
         if (consommateur != null) {
+            System.out.println("Consommateur trouvé avec ID: " + id);
             return consommateur;
         }
+        System.out.println("Consommateur non trouvé avec ID: " + id);
         
         // Ensuite dans le repository des producteurs
         Producteur producteur = producteurRepository.findById(id).orElse(null);
         if (producteur != null) {
+            System.out.println("Producteur trouvé avec ID: " + id);
             return producteur;
         }
+        System.out.println("Producteur non trouvé avec ID: " + id);
         
-        throw new EntityNotFoundException("Utilisateur introuvable avec ID: " + id);
+        // Vérifier si l'ID existe dans la table utilisateur (peut-être un autre type d'utilisateur)
+        System.out.println("Aucun utilisateur trouvé (ni consommateur ni producteur) avec ID: " + id);
+        throw new EntityNotFoundException("Utilisateur introuvable avec ID: " + id + ". Vérifiez que l'utilisateur existe dans la base de données.");
     }
 
     private Message findMessageById(int id) {

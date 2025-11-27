@@ -35,6 +35,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
         
+        // Ajouter un log pour voir toutes les requêtes
+        logger.info("=== Requête entrante ===");
+        logger.info("Méthode: " + request.getMethod());
+        logger.info("URL: " + request.getRequestURL());
+        logger.info("Query String: " + request.getQueryString());
+        
         // Récupérer le header Authorization
         final String authHeader = request.getHeader("Authorization");
         final String jwt;
@@ -42,6 +48,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         // Vérifier si le header existe et commence par "Bearer "
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            logger.info("Pas de header Authorization ou pas de Bearer token");
             filterChain.doFilter(request, response);
             return;
         }

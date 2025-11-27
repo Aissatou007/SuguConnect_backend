@@ -152,8 +152,22 @@ public class CommandeService {
     
     @Transactional
     public Commande changerStatutCommande(int commandeId, int producteurId, StatutCommande nouveauStatut, String motifRejet) {
+        System.out.println("=== Service changerStatutCommande ===");
+        System.out.println("Commande ID: " + commandeId);
+        System.out.println("Producteur ID: " + producteurId);
+        System.out.println("Nouveau statut: " + nouveauStatut);
+        System.out.println("Motif rejet: " + motifRejet);
+        
         Commande commande = findCommandeById(commandeId);
+        System.out.println("Commande trouvée: " + (commande != null ? commande.getIdCommande() : "null"));
+        
+        if (commande == null) {
+            System.out.println("ERREUR: Commande non trouvée avec ID: " + commandeId);
+            throw new EntityNotFoundException("Commande introuvable avec ID: " + commandeId);
+        }
+        
         verifierProprietaireCommande(commande, producteurId);
+        System.out.println("Vérification propriétaire OK");
         
         // Mettre à jour le statut
         commande.setStatutCommande(nouveauStatut);
@@ -163,8 +177,11 @@ public class CommandeService {
         
         // Notifier selon le statut
         notifierChangementStatut(commande, nouveauStatut, motifRejet);
+        System.out.println("Notification envoyée");
         
-        return commandeRepository.save(commande);
+        Commande result = commandeRepository.save(commande);
+        System.out.println("Commande sauvegardée avec succès");
+        return result;
     }
     
     @Transactional
@@ -178,7 +195,14 @@ public class CommandeService {
         commande.setReceptionValidee(true);
         commande.setDateReceptionValidee(LocalDate.now());
         
-        // Notifier le producteur
+        // Si la commande est en EN_LIVRAISON, changer le statut à LIVREE lors de la validation
+        if (commande.getStatutCommande() == StatutCommande.EN_LIVRAISON) {
+            commande.setStatutCommande(StatutCommande.LIVREE);
+            // Notifier le consommateur que la commande est livrée
+            notifierChangementStatut(commande, StatutCommande.LIVREE, null);
+        }
+        
+        // Notifier le producteur du revenu
         Producteur producteur = getProducteurCommande(commande);
         notificationService.notifierRevenuProducteur(
             producteur.getId(), 
@@ -336,10 +360,24 @@ public class CommandeService {
     }
     
     private void verifierProprietaireCommande(Commande commande, int producteurId) {
+        System.out.println("=== Vérification propriétaire commande ===");
+        System.out.println("Commande ID: " + commande.getIdCommande());
+        System.out.println("Producteur ID attendu: " + producteurId);
+        
         Producteur producteur = getProducteurCommande(commande);
-        if (producteur.getId() != producteurId) {
-            throw new SecurityException("Vous n'êtes pas autorisé à modifier cette commande");
+        System.out.println("Producteur réel de la commande: " + (producteur != null ? producteur.getId() : "null"));
+        
+        if (producteur == null) {
+            System.out.println("ERREUR: Producteur non trouvé pour la commande " + commande.getIdCommande());
+            throw new SecurityException("Producteur non trouvé pour cette commande");
         }
+        
+        if (producteur.getId() != producteurId) {
+            System.out.println("ERREUR: Producteur " + producteur.getId() + " tente d'accéder à la commande du producteur " + producteurId);
+            throw new SecurityException("Vous n'êtes pas autorisé à modifier cette commande. Producteur ID: " + producteur.getId() + ", Commande pour producteur ID: " + producteurId);
+        }
+        
+        System.out.println("Vérification propriétaire OK");
     }
     
     private void notifierChangementStatut(Commande commande, StatutCommande nouveauStatut, String motifRejet) {
@@ -369,8 +407,10 @@ public class CommandeService {
     }
     
     private void verifierStatutLivraison(Commande commande) {
-        if (commande.getStatutCommande() != StatutCommande.LIVREE) {
-            throw new IllegalStateException("Vous ne pouvez valider que les commandes livrées");
+        // Permettre la validation de réception pour les commandes EN_LIVRAISON ou LIVREE
+        if (commande.getStatutCommande() != StatutCommande.EN_LIVRAISON && 
+            commande.getStatutCommande() != StatutCommande.LIVREE) {
+            throw new IllegalStateException("Vous ne pouvez valider que les commandes en cours de livraison ou déjà livrées");
         }
     }
     

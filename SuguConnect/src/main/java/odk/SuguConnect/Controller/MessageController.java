@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -34,7 +35,7 @@ public class MessageController {
             @ApiResponse(responseCode = "201", description = "Message envoyé avec succès"),
             @ApiResponse(responseCode = "400", description = "Données de message invalides")
     })
-    public ResponseEntity<Message> sendMessage(
+    public ResponseEntity<?> sendMessage(
             @Parameter(description = "Données du message", required = true)
             @RequestBody Map<String, Object> messageData) {
         
@@ -61,10 +62,35 @@ public class MessageController {
                 return ResponseEntity.badRequest().build();
             }
             
-            int senderId = (int) senderIdObj;
-            int receiverId = (int) receiverIdObj;
-            String content = (String) contentObj;
-            String type = (String) (typeObj != null ? typeObj : "TEXT");
+            // Conversion sécurisée des IDs (gère Integer, Number, etc.)
+            int senderId;
+            int receiverId;
+            
+            try {
+                if (senderIdObj instanceof Number) {
+                    senderId = ((Number) senderIdObj).intValue();
+                } else if (senderIdObj instanceof Integer) {
+                    senderId = (Integer) senderIdObj;
+                } else {
+                    senderId = Integer.parseInt(senderIdObj.toString());
+                }
+                
+                if (receiverIdObj instanceof Number) {
+                    receiverId = ((Number) receiverIdObj).intValue();
+                } else if (receiverIdObj instanceof Integer) {
+                    receiverId = (Integer) receiverIdObj;
+                } else {
+                    receiverId = Integer.parseInt(receiverIdObj.toString());
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("Erreur de conversion des IDs: " + e.getMessage());
+                System.out.println("senderId type: " + senderIdObj.getClass().getName() + ", value: " + senderIdObj);
+                System.out.println("receiverId type: " + receiverIdObj.getClass().getName() + ", value: " + receiverIdObj);
+                return ResponseEntity.badRequest().build();
+            }
+            
+            String content = contentObj.toString();
+            String type = (typeObj != null ? typeObj.toString() : "TEXT");
             
             System.out.println("senderId: " + senderId);
             System.out.println("receiverId: " + receiverId);
@@ -74,12 +100,23 @@ public class MessageController {
             Message message = messageService.sendMessage(senderId, receiverId, content, type);
             System.out.println("=== Fin sendMessage ===");
             return ResponseEntity.status(201).body(message);
+        } catch (jakarta.persistence.EntityNotFoundException e) {
+            System.out.println("=== ERREUR sendMessage (EntityNotFound) ===");
+            System.out.println("Erreur: " + e.getMessage());
+            e.printStackTrace();
+            System.out.println("=== FIN ERREUR sendMessage ===");
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", e.getMessage());
+            errorResponse.put("message", "L'utilisateur spécifié n'existe pas dans la base de données");
+            return ResponseEntity.badRequest().body(errorResponse);
         } catch (Exception e) {
             System.out.println("=== ERREUR sendMessage ===");
             System.out.println("Erreur: " + e.getMessage());
             e.printStackTrace();
             System.out.println("=== FIN ERREUR sendMessage ===");
-            return ResponseEntity.badRequest().build();
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Erreur lors de l'envoi du message: " + e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
         }
     }
 
@@ -167,33 +204,59 @@ public class MessageController {
             @ApiResponse(responseCode = "200", description = "Historique récupéré avec succès"),
             @ApiResponse(responseCode = "400", description = "Paramètres invalides")
     })
-    public ResponseEntity<List<Message>> getConversation(
+    public ResponseEntity<?> getConversation(
             @Parameter(description = "ID du premier utilisateur", required = true)
-            @RequestParam int userId1,
+            @RequestParam(required = false) String userId1,
             @Parameter(description = "ID du second utilisateur", required = true)
-            @RequestParam int userId2) {
+            @RequestParam(required = false) String userId2) {
         
         try {
             System.out.println("=== Début getConversation ===");
-            System.out.println("userId1: " + userId1);
-            System.out.println("userId2: " + userId2);
+            System.out.println("userId1 (String): " + userId1);
+            System.out.println("userId2 (String): " + userId2);
             
             // Validation des paramètres
-            if (userId1 <= 0 || userId2 <= 0) {
-                System.out.println("Paramètres invalides: userId1=" + userId1 + ", userId2=" + userId2);
-                return ResponseEntity.badRequest().build();
+            if (userId1 == null || userId2 == null || userId1.isEmpty() || userId2.isEmpty()) {
+                System.out.println("Paramètres manquants: userId1=" + userId1 + ", userId2=" + userId2);
+                return ResponseEntity.badRequest().body(Map.of("error", "Les paramètres userId1 et userId2 sont requis"));
             }
             
-            List<Message> messages = messageService.getConversation(userId1, userId2);
+            // Conversion en int
+            int userId1Int;
+            int userId2Int;
+            try {
+                userId1Int = Integer.parseInt(userId1);
+                userId2Int = Integer.parseInt(userId2);
+            } catch (NumberFormatException e) {
+                System.out.println("Erreur de conversion: " + e.getMessage());
+                return ResponseEntity.badRequest().body(Map.of("error", "Les IDs doivent être des nombres valides"));
+            }
+            
+            System.out.println("userId1 (int): " + userId1Int);
+            System.out.println("userId2 (int): " + userId2Int);
+            
+            // Validation des valeurs
+            if (userId1Int <= 0 || userId2Int <= 0) {
+                System.out.println("Paramètres invalides: userId1=" + userId1Int + ", userId2=" + userId2Int);
+                return ResponseEntity.badRequest().body(Map.of("error", "Les IDs doivent être positifs"));
+            }
+            
+            List<Message> messages = messageService.getConversation(userId1Int, userId2Int);
             System.out.println("Messages trouvés: " + messages.size());
             System.out.println("=== Fin getConversation ===");
             return ResponseEntity.ok(messages);
+        } catch (jakarta.persistence.EntityNotFoundException e) {
+            System.out.println("=== ERREUR getConversation (EntityNotFound) ===");
+            System.out.println("Erreur: " + e.getMessage());
+            e.printStackTrace();
+            System.out.println("=== FIN ERREUR getConversation ===");
+            return ResponseEntity.badRequest().body(Map.of("error", "Utilisateur introuvable: " + e.getMessage()));
         } catch (Exception e) {
             System.out.println("=== ERREUR getConversation ===");
             System.out.println("Erreur: " + e.getMessage());
             e.printStackTrace();
             System.out.println("=== FIN ERREUR getConversation ===");
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(Map.of("error", "Erreur lors de la récupération de la conversation: " + e.getMessage()));
         }
     }
 

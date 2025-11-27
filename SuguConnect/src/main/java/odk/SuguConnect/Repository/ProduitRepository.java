@@ -4,11 +4,13 @@ import odk.SuguConnect.Entity.Categorie;
 import odk.SuguConnect.Entity.Producteur;
 import odk.SuguConnect.Entity.Produit;
 import odk.SuguConnect.DTO.ProduitPopulaireDTO;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface ProduitRepository extends JpaRepository<Produit, Integer> {
     List<Produit> findByProducteur(Producteur producteur);
@@ -16,6 +18,11 @@ public interface ProduitRepository extends JpaRepository<Produit, Integer> {
     List<Produit> findByCategorieId(int id);
     List<Produit> findByNomContainingIgnoreCase(String nom);
     List<Produit> findByCategorieAndStockDisponibleGreaterThan(Categorie categorie, int stock);
+    
+    // Charger le produit avec son producteur et sa catégorie
+    @EntityGraph(attributePaths = {"producteur", "categorie"})
+    @Query("SELECT p FROM Produit p WHERE p.id = :id")
+    Optional<Produit> findByIdWithProducteurAndCategorie(@Param("id") int id);
     
     @Query("SELECT new odk.SuguConnect.DTO.ProduitPopulaireDTO(" +
            "p.id, p.nom, p.description, p.prixUnitaire, " +

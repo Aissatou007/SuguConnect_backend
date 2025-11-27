@@ -108,6 +108,17 @@ public class SecurityConfig {
                                 "/producteur/{producteurId}/commandes"
                         ).hasAnyRole("PRODUCTEUR", "ADMIN")
                         
+                        // Endpoint legacy pour changement de statut de commande
+                        .requestMatchers(
+                                org.springframework.http.HttpMethod.PUT,
+                                "/producteur/commande/{commandeId}/statut"
+                        ).permitAll()
+                        
+                        // ============================================
+                        // ENDPOINTS PRODUCTEUR (PRODUCTEUR ou ADMIN) - Doit être après les règles spécifiques
+                        // ============================================
+                        .requestMatchers("/producteur/**").hasAnyRole("PRODUCTEUR", "ADMIN")
+                        
                         // ============================================
                         // ENDPOINTS FICHIERS (Upload/Delete nécessite authentification)
                         // ============================================
@@ -133,11 +144,6 @@ public class SecurityConfig {
                                 org.springframework.http.HttpMethod.DELETE,
                                 "/categorie/{id}"
                         ).hasRole("ADMIN")
-                        
-                        // ============================================
-                        // ENDPOINTS PRODUCTEUR (PRODUCTEUR ou ADMIN)
-                        // ============================================
-                        .requestMatchers("/producteur/**").hasAnyRole("PRODUCTEUR", "ADMIN")
                         
                         // ============================================
                         // ENDPOINTS CONSOMMATEUR (CONSOMMATEUR ou ADMIN)

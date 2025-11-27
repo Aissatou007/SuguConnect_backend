@@ -89,6 +89,17 @@ public class ProducteurService {
         return producteurRepository.findById(id).orElse(null);
     }
 
+    public Producteur findByTelephone(String telephone) {
+        System.out.println("=== ProducteurService.findByTelephone ===");
+        System.out.println("Recherche producteur avec téléphone: " + telephone);
+        Producteur producteur = producteurRepository.findByTelephone(telephone);
+        System.out.println("Producteur trouvé: " + (producteur != null ? producteur.getId() : "null"));
+        if (producteur != null) {
+            System.out.println("Rôle du producteur: " + producteur.getRole().name());
+        }
+        return producteur;
+    }
+
     private ProducteurResponseDTO toResponseDTO(Producteur producteur) {
         ProducteurResponseDTO dto = new ProducteurResponseDTO();
         dto.setId(producteur.getId());

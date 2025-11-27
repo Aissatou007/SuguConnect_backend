@@ -459,6 +459,12 @@ public class ConsommateurController {
         String telephone = authentication.getName();
         Consommateur consommateur = consommateurService.findByTelephone(telephone);
         
+        if (consommateur == null) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Consommateur non trouvé pour le téléphone: " + telephone);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
+        }
+        
         // Extraire l'ID utilisateur du token JWT
         String authHeader = httpRequest.getHeader("Authorization");
         String jwt = authHeader.substring(7); // Enlever "Bearer "
@@ -468,9 +474,13 @@ public class ConsommateurController {
         System.out.println("DEBUG: ID consommateur dans les paramètres: " + consommateurId);
         System.out.println("DEBUG: Téléphone de l'authentification: " + telephone);
         System.out.println("DEBUG: ID utilisateur du token: " + tokenUserId);
+        System.out.println("DEBUG: ID consommateur trouvé par téléphone: " + consommateur.getId());
         System.out.println("DEBUG: Rôle du consommateur: " + consommateur.getRole().name());
         
-        if (!consommateur.getRole().name().equals("ADMIN") && tokenUserId != consommateurId) {
+        // Si l'ID du token est null, utiliser l'ID du consommateur trouvé par téléphone
+        Integer userIdToCheck = (tokenUserId != null) ? tokenUserId : consommateur.getId();
+        
+        if (!consommateur.getRole().name().equals("ADMIN") && !userIdToCheck.equals(consommateurId)) {
             Map<String, String> errorResponse = new HashMap<>();
             errorResponse.put("error", "Vous n'êtes pas autorisé à valider cette commande. ID token: " + tokenUserId + ", ID paramètre: " + consommateurId);
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);

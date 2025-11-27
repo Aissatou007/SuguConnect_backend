@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import odk.SuguConnect.DTO.Request.ProducteurRequestDTO;
 import odk.SuguConnect.DTO.Request.ProduitRequestDTO;
@@ -23,11 +24,13 @@ import odk.SuguConnect.Service.ProducteurService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -41,6 +44,7 @@ public class ProducteurController {
     private final FileStorageService fileStorageService;
     private final CommandeService commandeService;
     private final odk.SuguConnect.Service.ProduitService produitService;  // Ajout du ProduitService pour respecter SRP
+    private final odk.SuguConnect.Security.JwtService jwtService; // Ajout du JwtService pour l'authentification
 
     @PostMapping(path = "/inscription")
     @Operation(
@@ -265,44 +269,73 @@ public class ProducteurController {
             )
             @RequestPart(value = "photos", required = false) List<MultipartFile> photos) {
 
-        // Créer le produit modifié
-        Produit produitModifie = new Produit();
-        produitModifie.setId(produitId);
-        
-        try {
-            if (nom != null) produitModifie.setNom(nom);
-            if (description != null) produitModifie.setDescription(description);
-            if (prixUnitaire != null) produitModifie.setPrixUnitaire(Float.parseFloat(prixUnitaire));
-            if (unite != null) produitModifie.setUnite(odk.SuguConnect.Enums.Unite.valueOf(unite.toUpperCase()));
-            if (quantite != null) produitModifie.setQuantite(Integer.parseInt(quantite));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body("Format de données invalide: " + e.getMessage());
+        // Récupérer le produit existant
+        Produit produitExistant = produitService.getProduitById(produitId);
+        if (produitExistant == null) {
+            return ResponseEntity.notFound().build();
         }
 
-        // Si de nouvelles photos sont fournies
-        if (photos != null && !photos.isEmpty()) {
-            if (photos.size() > 4) {
-                return ResponseEntity.badRequest().body("Maximum 4 photos autorisées");
-            }
+        // Vérifier que le produit appartient au producteur
+        if (produitExistant.getProducteur().getId() != producteurId) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Vous n'êtes pas autorisé à modifier ce produit");
+        }
 
-            List<String> photoUrls = new ArrayList<>();
+        // Mettre à jour les champs fournis
+        if (nom != null && !nom.trim().isEmpty()) {
+            produitExistant.setNom(nom);
+        }
+        if (description != null) {
+            produitExistant.setDescription(description);
+        }
+        if (prixUnitaire != null && !prixUnitaire.trim().isEmpty()) {
+            try {
+                produitExistant.setPrixUnitaire(Float.parseFloat(prixUnitaire));
+            } catch (NumberFormatException e) {
+                return ResponseEntity.badRequest().body("Format de prix invalide");
+            }
+        }
+        if (unite != null && !unite.trim().isEmpty()) {
+            try {
+                produitExistant.setUnite(odk.SuguConnect.Enums.Unite.valueOf(unite.toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().body("Unité invalide");
+            }
+        }
+        if (quantite != null && !quantite.trim().isEmpty()) {
+            try {
+                produitExistant.setQuantite(Integer.parseInt(quantite));
+            } catch (NumberFormatException e) {
+                return ResponseEntity.badRequest().body("Format de quantité invalide");
+            }
+        }
+
+        // Gérer les nouvelles photos si fournies
+        if (photos != null && !photos.isEmpty()) {
+            // Supprimer les anciennes photos
+            for (String photoUrl : produitExistant.getPhotos()) {
+                fileStorageService.deleteFile(photoUrl);
+            }
+            
+            // Sauvegarder les nouvelles photos
+            List<String> nouvellesPhotoUrls = new ArrayList<>();
             for (MultipartFile photo : photos) {
                 if (!photo.isEmpty()) {
                     String fileName = fileStorageService.storeFile(photo);
-                    photoUrls.add(fileName);
+                    nouvellesPhotoUrls.add(fileName);
                 }
             }
-            produitModifie.setPhotos(photoUrls);
+            produitExistant.setPhotos(nouvellesPhotoUrls);
         }
 
-        Produit produitModifieObj = produitService.modifierProduit(produitModifie, produitId, producteurId);
-        return ResponseEntity.ok("Produit modifié avec succès, ID: " + produitModifieObj.getId());
+        // Mettre à jour le produit
+        Produit produitMisAJour = produitService.modifierProduit(produitExistant, produitId, producteurId);
+        return ResponseEntity.ok("Produit mis à jour avec succès");
     }
 
-    @DeleteMapping(path = "/{producteurId}/produit/{produitId}")
+    @DeleteMapping("/{producteurId}/produit/{produitId}")
     @Operation(
             summary = "Supprimer un produit",
-            description = "Permet de supprimer un produit"
+            description = "Permet à un producteur de supprimer un de ses produits"
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Produit supprimé avec succès"),
@@ -314,22 +347,177 @@ public class ProducteurController {
             @PathVariable int producteurId,
             @Parameter(description = "ID du produit", required = true)
             @PathVariable int produitId) {
+        
+        // Récupérer le produit existant
+        Produit produitExistant = produitService.getProduitById(produitId);
+        if (produitExistant == null) {
+            return ResponseEntity.notFound().build();
+        }
 
-        String message = produitService.supprimerProduit(produitId, producteurId);
-        return ResponseEntity.ok(message);
+        // Vérifier que le produit appartient au producteur
+        if (produitExistant.getProducteur().getId() != producteurId) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Vous n'êtes pas autorisé à supprimer ce produit");
+        }
+
+        // Supprimer les photos associées
+        for (String photoUrl : produitExistant.getPhotos()) {
+            fileStorageService.deleteFile(photoUrl);
+        }
+
+        // Supprimer le produit
+        produitService.supprimerProduit(produitId, producteurId);
+        return ResponseEntity.ok("Produit supprimé avec succès");
     }
-    
-    @PutMapping(path = "/commande/{commandeId}/statut")
+
+    @GetMapping("/{producteurId}/commandes")
     @Operation(
-            summary = "Changer le statut d'une commande",
-            description = "Permet au producteur de changer le statut d'une commande (VALIDEE, REFUSEE, EN_LIVRAISON, LIVREE)"
+            summary = "Récupérer toutes les commandes d'un producteur",
+            description = "Permet à un producteur de récupérer toutes ses commandes"
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Statut modifié avec succès"),
+            @ApiResponse(responseCode = "200", description = "Commandes récupérées"),
+            @ApiResponse(responseCode = "403", description = "Non autorisé"),
+            @ApiResponse(responseCode = "404", description = "Producteur non trouvé")
+    })
+    public ResponseEntity<List<CommandeResponseDTO>> recupererCommandesProducteur(
+            @Parameter(description = "ID du producteur", required = true)
+            @PathVariable int producteurId,
+            @Parameter(description = "Statut des commandes (optionnel)", required = false)
+            @RequestParam(required = false) StatutCommande statut,
+            @Parameter(description = "Recherche (optionnel)", required = false)
+            @RequestParam(required = false) String search,
+            Authentication authentication) {
+        
+        // Vérifier que l'utilisateur authentifié est bien le producteur concerné ou un administrateur
+        String telephone = authentication.getName();
+        odk.SuguConnect.Entity.Producteur producteur = producteurService.findByTelephone(telephone);
+        
+        // Vérifier que l'utilisateur a le droit d'accéder à ces commandes
+        if (!producteur.getRole().name().equals("ADMIN") && producteur.getId() != producteurId) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        List<Commande> commandes = commandeService.voirCommandesParProducteur(producteurId, statut, search);
+        List<CommandeResponseDTO> response = commandes.stream()
+                .map(CommandeMapper::toResponse)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{producteurId}/commandes/{commandeId}")
+    @Operation(
+            summary = "Récupérer une commande par son ID",
+            description = "Permet à un producteur de récupérer les détails d'une commande spécifique"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Commande trouvée"),
             @ApiResponse(responseCode = "403", description = "Non autorisé"),
             @ApiResponse(responseCode = "404", description = "Commande non trouvée")
     })
-    public ResponseEntity<Commande> changerStatutCommande(
+    public ResponseEntity<CommandeResponseDTO> recupererCommande(
+            @Parameter(description = "ID du producteur", required = true)
+            @PathVariable int producteurId,
+            @Parameter(description = "ID de la commande", required = true)
+            @PathVariable int commandeId,
+            Authentication authentication) {
+        
+        // Vérifier que l'utilisateur authentifié est bien le producteur concerné
+        String telephone = authentication.getName();
+        odk.SuguConnect.Entity.Producteur producteur = producteurService.findByTelephone(telephone);
+        
+        if (producteur.getId() != producteurId) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        Commande commande = commandeService.voirCommandeParId(commandeId);
+        CommandeResponseDTO commandeResponseDTO = CommandeMapper.toResponse(commande);
+        return ResponseEntity.ok(commandeResponseDTO);
+    }
+
+    @GetMapping("/test-security")
+    public ResponseEntity<String> testSecurity(Authentication authentication, HttpServletRequest request) {
+        System.out.println("=== Test endpoint security ===");
+        System.out.println("Méthode HTTP: " + request.getMethod());
+        System.out.println("URL: " + request.getRequestURL());
+        System.out.println("Query String: " + request.getQueryString());
+        
+        String telephone = authentication.getName();
+        System.out.println("Téléphone: " + telephone);
+        
+        odk.SuguConnect.Entity.Producteur producteur = producteurService.findByTelephone(telephone);
+        System.out.println("Producteur: " + (producteur != null ? producteur.getId() : "null"));
+        
+        if (producteur != null) {
+            System.out.println("Rôle: " + producteur.getRole().name());
+        }
+        
+        return ResponseEntity.ok("Accès autorisé pour " + telephone);
+    }
+
+    @GetMapping("/test-legacy")
+    public ResponseEntity<String> testLegacyEndpoint(
+            @RequestParam(required = false) Integer producteurId,
+            @RequestParam(required = false) String statut,
+            HttpServletRequest request) {
+        System.out.println("=== Test endpoint legacy ===");
+        System.out.println("Méthode HTTP: " + request.getMethod());
+        System.out.println("URL: " + request.getRequestURL());
+        System.out.println("Query String: " + request.getQueryString());
+        System.out.println("Param producteurId: " + producteurId);
+        System.out.println("Param statut: " + statut);
+        
+        return ResponseEntity.ok("Endpoint legacy accessible");
+    }
+
+    @PutMapping("/test-simple")
+    public ResponseEntity<String> testSimplePut() {
+        System.out.println("=== Test endpoint PUT simple ===");
+        return ResponseEntity.ok("Test PUT réussi");
+    }
+
+    @PutMapping("/test-expedition")
+    public ResponseEntity<String> testExpedition(
+            @RequestParam int producteurId,
+            @RequestParam int commandeId,
+            @RequestParam StatutCommande nouveauStatut,
+            @RequestParam(required = false) String motifRejet,
+            Authentication authentication,
+            HttpServletRequest httpRequest) {
+        
+        System.out.println("=== Test endpoint expédition ===");
+        System.out.println("Producteur ID: " + producteurId);
+        System.out.println("Commande ID: " + commandeId);
+        System.out.println("Nouveau statut: " + nouveauStatut);
+        System.out.println("Motif rejet: " + motifRejet);
+        
+        String telephone = authentication.getName();
+        System.out.println("Téléphone auth: " + telephone);
+        
+        odk.SuguConnect.Entity.Producteur producteur = producteurService.findByTelephone(telephone);
+        System.out.println("Producteur trouvé: " + (producteur != null ? producteur.getId() : "null"));
+        
+        if (producteur != null) {
+            System.out.println("Rôle producteur: " + producteur.getRole().name());
+            System.out.println("Comparaison ID - Token: " + producteur.getId() + ", Param: " + producteurId);
+            boolean autorise = producteur.getRole().name().equals("ADMIN") || producteur.getId() == producteurId;
+            System.out.println("Autorisé: " + autorise);
+        }
+        
+        return ResponseEntity.ok("Test expédition réussi");
+    }
+
+    @PutMapping("/commande/{commandeId}/statut")
+    @Operation(
+            summary = "Changer le statut d'une commande (endpoint legacy)",
+            description = "Permet à un producteur de changer le statut d'une commande - Endpoint de compatibilité"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Statut changé avec succès"),
+            @ApiResponse(responseCode = "400", description = "Données invalides"),
+            @ApiResponse(responseCode = "403", description = "Non autorisé"),
+            @ApiResponse(responseCode = "404", description = "Commande non trouvée")
+    })
+    public ResponseEntity<Commande> changerStatutCommandeLegacy(
             @Parameter(description = "ID de la commande", required = true)
             @PathVariable int commandeId,
             @Parameter(description = "ID du producteur", required = true)
@@ -337,56 +525,148 @@ public class ProducteurController {
             @Parameter(description = "Nouveau statut (VALIDEE, REFUSEE, EN_LIVRAISON, LIVREE)", required = true)
             @RequestParam StatutCommande nouveauStatut,
             @Parameter(description = "Motif de rejet (obligatoire si REFUSEE)")
-            @RequestParam(required = false) String motifRejet) {
+            @RequestParam(required = false) String motifRejet,
+            Authentication authentication,
+            HttpServletRequest httpRequest) {
         
-        Commande commande = commandeService.changerStatutCommande(commandeId, producteurId, nouveauStatut, motifRejet);
-        return ResponseEntity.ok(commande);
+        System.out.println("=== Appel endpoint legacy ===");
+        System.out.println("Commande ID: " + commandeId);
+        System.out.println("Producteur ID (param): " + producteurId);
+        System.out.println("Nouveau statut: " + nouveauStatut);
+        System.out.println("Motif rejet: " + motifRejet);
+        
+        try {
+            // Vérifier que l'utilisateur authentifié est bien le producteur concerné ou un administrateur
+            String telephone = authentication.getName();
+            odk.SuguConnect.Entity.Producteur producteur = producteurService.findByTelephone(telephone);
+            
+            System.out.println("Producteur trouvé: " + (producteur != null ? producteur.getId() : "null"));
+            System.out.println("Téléphone auth: " + telephone);
+            
+            if (producteur == null) {
+                System.out.println("ERREUR: Producteur non trouvé pour le téléphone: " + telephone);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            
+            // Extraire l'ID utilisateur du token JWT
+            String authHeader = httpRequest.getHeader("Authorization");
+            String jwt = authHeader.substring(7); // Enlever "Bearer "
+            Integer tokenUserId = jwtService.extractUserId(jwt);
+            
+            // Ajouter des logs pour le débogage
+            System.out.println("DEBUG: ID utilisateur du token: " + tokenUserId);
+            System.out.println("DEBUG: ID producteur du token: " + producteur.getId());
+            System.out.println("DEBUG: Rôle du producteur: " + producteur.getRole().name());
+            
+            // Vérifier que l'utilisateur est autorisé à modifier cette commande
+            // Soit c'est un admin, soit c'est le producteur concerné
+            System.out.println("DEBUG: Vérification autorisation - Producteur ID token: " + producteur.getId() + ", Producteur ID paramètre: " + producteurId);
+            if (!producteur.getRole().name().equals("ADMIN") && producteur.getId() != producteurId) {
+                System.out.println("ERREUR: Producteur " + producteur.getId() + " tente d'accéder à la commande du producteur " + producteurId);
+                System.out.println("DEBUG: Token user ID: " + tokenUserId + ", Paramètre producteur ID: " + producteurId);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            
+            System.out.println("DEBUG: Autorisation accordée, appel du service");
+            Commande commande = commandeService.changerStatutCommande(commandeId, producteurId, nouveauStatut, motifRejet);
+            System.out.println("DEBUG: Commande mise à jour avec succès");
+            return ResponseEntity.ok(commande);
+        } catch (Exception e) {
+            System.out.println("=== Erreur endpoint legacy ===");
+            System.out.println("Exception: " + e.getClass().getName() + " - " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
     }
-    
-    @GetMapping(path = "/{producteurId}/commandes")
+
+    @PutMapping({
+            "/{producteurId}/commandes/{commandeId}/statut",  // nouvelle convention
+            "/{producteurId}/commande/{commandeId}/statut"    // compatibilité legacy (sans 's')
+    })
     @Operation(
-            summary = "Récupérer les commandes d'un producteur",
-            description = "Retourne toutes les commandes d'un producteur avec filtres optionnels par statut et recherche"
+            summary = "Changer le statut d'une commande",
+            description = "Permet à un producteur de changer le statut d'une commande (VALIDEE, REFUSEE, EN_LIVRAISON, LIVREE)"
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Commandes récupérées avec succès"),
-            @ApiResponse(responseCode = "403", description = "Non autorisé")
+            @ApiResponse(responseCode = "200", description = "Statut changé avec succès"),
+            @ApiResponse(responseCode = "400", description = "Données invalides"),
+            @ApiResponse(responseCode = "403", description = "Non autorisé"),
+            @ApiResponse(responseCode = "404", description = "Commande non trouvée")
     })
-    public ResponseEntity<List<odk.SuguConnect.DTO.Responses.CommandeResponseDTO>> getCommandesProducteur(
+    public ResponseEntity<?> changerStatutCommande(
             @Parameter(description = "ID du producteur", required = true)
             @PathVariable int producteurId,
-            @Parameter(description = "Statut de la commande (VALIDEE, EN_LIVRAISON, LIVREE, etc.)")
-            @RequestParam(required = false) StatutCommande statut,
-            @Parameter(description = "Terme de recherche (numéro commande, nom/prénom client)")
-            @RequestParam(required = false) String search) {
+            @Parameter(description = "ID de la commande", required = true)
+            @PathVariable int commandeId,
+            @Parameter(description = "Nouveau statut (VALIDEE, REFUSEE, EN_LIVRAISON, LIVREE)", required = true)
+            @RequestParam StatutCommande nouveauStatut,
+            @Parameter(description = "Motif de rejet (obligatoire si REFUSEE)")
+            @RequestParam(required = false) String motifRejet,
+            Authentication authentication,
+            HttpServletRequest httpRequest) {
         
-        List<Commande> commandes = commandeService.voirCommandesParProducteur(producteurId, statut, search);
-        List<odk.SuguConnect.DTO.Responses.CommandeResponseDTO> commandeDTOs = commandes.stream()
-                .map(odk.SuguConnect.Mapper.CommandeMapper::toResponse)
-                .toList();
-        return ResponseEntity.ok(commandeDTOs);
-    }
-    
-    // Nouveau endpoint pour récupérer les commandes payées d'un producteur
-    @GetMapping(path = "/{producteurId}/commandes/payees")
-    @Operation(
-            summary = "Récupérer les commandes payées d'un producteur",
-            description = "Retourne toutes les commandes payées d'un producteur avec recherche optionnelle"
-    )
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Commandes payées récupérées avec succès"),
-            @ApiResponse(responseCode = "403", description = "Non autorisé")
-    })
-    public ResponseEntity<List<odk.SuguConnect.DTO.Responses.CommandeResponseDTO>> getCommandesPayeesProducteur(
-            @Parameter(description = "ID du producteur", required = true)
-            @PathVariable int producteurId,
-            @Parameter(description = "Terme de recherche (numéro commande, nom/prénom client)")
-            @RequestParam(required = false) String search) {
+        System.out.println("=== Appel méthode changerStatutCommande ===");
+        System.out.println("Commande ID: " + commandeId);
+        System.out.println("Producteur ID (path): " + producteurId);
+        System.out.println("Nouveau statut: " + nouveauStatut);
+        System.out.println("Motif rejet: " + motifRejet);
         
-        List<Commande> commandes = commandeService.voirCommandesPayeesParProducteur(producteurId, search);
-        List<odk.SuguConnect.DTO.Responses.CommandeResponseDTO> commandeDTOs = commandes.stream()
-                .map(odk.SuguConnect.Mapper.CommandeMapper::toResponse)
-                .toList();
-        return ResponseEntity.ok(commandeDTOs);
+        try {
+            // Vérifier que l'utilisateur authentifié est bien le producteur concerné ou un administrateur
+            String telephone = authentication.getName();
+            odk.SuguConnect.Entity.Producteur producteur = producteurService.findByTelephone(telephone);
+            
+            System.out.println("Producteur trouvé: " + (producteur != null ? producteur.getId() : "null"));
+            System.out.println("Téléphone auth: " + telephone);
+            
+            if (producteur == null) {
+                System.out.println("ERREUR: Producteur non trouvé pour le téléphone: " + telephone);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            
+            // Extraire l'ID utilisateur du token JWT
+            String authHeader = httpRequest.getHeader("Authorization");
+            String jwt = authHeader.substring(7); // Enlever "Bearer "
+            Integer tokenUserId = jwtService.extractUserId(jwt);
+            
+            // Ajouter des logs pour le débogage
+            System.out.println("DEBUG: ID utilisateur du token: " + tokenUserId);
+            System.out.println("DEBUG: ID producteur trouvé par téléphone: " + producteur.getId());
+            System.out.println("DEBUG: Rôle du producteur: " + producteur.getRole().name());
+            
+            // Vérifier que l'utilisateur est autorisé à modifier cette commande
+            // Soit c'est un admin, soit c'est le producteur concerné (vérifier avec l'ID du token)
+            System.out.println("DEBUG: Vérification autorisation - Token user ID: " + tokenUserId + ", Producteur ID paramètre: " + producteurId);
+            System.out.println("DEBUG: Producteur authentifié ID: " + producteur.getId());
+            
+            // Si l'ID du token est null, utiliser l'ID du producteur trouvé par téléphone
+            Integer userIdToCheck = (tokenUserId != null) ? tokenUserId : producteur.getId();
+            
+            // Vérification stricte : le producteur authentifié doit correspondre au producteurId dans l'URL
+            // OU être un admin
+            boolean isAdmin = producteur.getRole().name().equals("ADMIN");
+            boolean isAuthorized = userIdToCheck.equals(producteurId);
+            
+            System.out.println("DEBUG: isAdmin: " + isAdmin + ", isAuthorized: " + isAuthorized);
+            System.out.println("DEBUG: Comparaison - userIdToCheck (" + userIdToCheck + ") == producteurId (" + producteurId + "): " + isAuthorized);
+            
+            if (!isAdmin && !isAuthorized) {
+                System.out.println("ERREUR: Producteur " + userIdToCheck + " (authentifié) tente d'accéder à la commande du producteur " + producteurId);
+                System.out.println("DEBUG: Token user ID: " + tokenUserId + ", Producteur ID paramètre: " + producteurId);
+                Map<String, String> errorResponse = new HashMap<>();
+                errorResponse.put("error", "Vous n'êtes pas autorisé à modifier cette commande. Producteur authentifié: " + userIdToCheck + ", Producteur requis: " + producteurId);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
+            }
+            
+            System.out.println("DEBUG: Autorisation accordée, appel du service");
+            Commande commande = commandeService.changerStatutCommande(commandeId, producteurId, nouveauStatut, motifRejet);
+            System.out.println("DEBUG: Commande mise à jour avec succès");
+            return ResponseEntity.ok(commande);
+        } catch (Exception e) {
+            System.out.println("=== Erreur dans changerStatutCommande ===");
+            System.out.println("Exception: " + e.getClass().getName() + " - " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
     }
 }

@@ -166,7 +166,8 @@ public class ProduitService {
      * @throws EntityNotFoundException si le produit n'existe pas
      */
     public Produit getProduitById(int produitId) {
-        return produitRepository.findById(produitId)
+        // Utiliser la méthode qui charge le producteur et la catégorie
+        return produitRepository.findByIdWithProducteurAndCategorie(produitId)
                 .orElseThrow(() -> new EntityNotFoundException("Produit non trouvé avec l'ID: " + produitId));
     }
     
