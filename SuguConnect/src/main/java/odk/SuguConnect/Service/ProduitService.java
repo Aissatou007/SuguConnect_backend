@@ -130,6 +130,11 @@ public class ProduitService {
             produit.setEstBio(produitModifie.isEstBio());
         }
         
+        // Mettre à jour seuilAlerte si fourni explicitement
+        if(produitModifie.getSeuilAlerte() > 0 || produitModifie.getSeuilAlerte() == 0) {
+            produit.setSeuilAlerte(produitModifie.getSeuilAlerte());
+        }
+        
         produitRepository.save(produit);
         return produit;
     }
@@ -138,6 +143,33 @@ public class ProduitService {
         Producteur producteur = producteurRepository.findById(producteurId)
                 .orElseThrow(()->new EntityNotFoundException("Ce producteur n'existe pas"));
         return produitRepository.findByProducteur(producteur);
+    }
+    
+    public List<Produit> listerProduitsEnStock(int producteurId) {
+        Producteur producteur = producteurRepository.findById(producteurId)
+                .orElseThrow(() -> new EntityNotFoundException("Ce producteur n'existe pas"));
+        List<Produit> produits = produitRepository.findByProducteur(producteur);
+        return produits.stream()
+                .filter(produit -> produit.getStockDisponible() > 0)
+                .toList();
+    }
+    
+    public List<Produit> listerProduitsStockFaible(int producteurId) {
+        Producteur producteur = producteurRepository.findById(producteurId)
+                .orElseThrow(() -> new EntityNotFoundException("Ce producteur n'existe pas"));
+        List<Produit> produits = produitRepository.findByProducteur(producteur);
+        return produits.stream()
+                .filter(produit -> produit.getStockDisponible() > 0 && produit.getStockDisponible() <= produit.getSeuilAlerte())
+                .toList();
+    }
+    
+    public List<Produit> listerProduitsEpuises(int producteurId) {
+        Producteur producteur = producteurRepository.findById(producteurId)
+                .orElseThrow(() -> new EntityNotFoundException("Ce producteur n'existe pas"));
+        List<Produit> produits = produitRepository.findByProducteur(producteur);
+        return produits.stream()
+                .filter(produit -> produit.getStockDisponible() == 0)
+                .toList();
     }
     
     public List<Produit> filtrerProduitsParNom(String nom) {

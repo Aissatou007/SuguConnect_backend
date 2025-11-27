@@ -19,7 +19,9 @@ import odk.SuguConnect.Enums.StatutCommande;
 import odk.SuguConnect.Repository.ProduitRepository;
 import odk.SuguConnect.Service.CommandeService;
 import odk.SuguConnect.Service.FileStorageService;
+import odk.SuguConnect.Service.LivreurService;
 import odk.SuguConnect.Service.ProducteurService;
+import odk.SuguConnect.DTO.Responses.LivreurResponseDTO;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -40,6 +42,7 @@ public class ProducteurController {
     private final ProducteurService producteurService;
     private final FileStorageService fileStorageService;
     private final CommandeService commandeService;
+    private final LivreurService livreurService;
     private final odk.SuguConnect.Service.ProduitService produitService;  // Ajout du ProduitService pour respecter SRP
     private final ProduitRepository produitRepository;
 
@@ -128,7 +131,9 @@ public class ProducteurController {
     @PostMapping(path = "/{producteurId}/produit", consumes = {"multipart/form-data"})
     @Operation(
             summary = "Ajouter un produit avec photos",
-            description = "Permet à un producteur d'ajouter un nouveau produit avec ses photos (1 à 4 photos). **IMPORTANT:** Pour ajouter plusieurs photos, sélectionnez le champ 'photos' plusieurs fois dans Swagger en cliquant sur 'Add string item' ou utilisez Postman/Bruno en ajoutant plusieurs fichiers avec la même clé 'photos'."
+            description = "Permet à un producteur d'ajouter un nouveau produit avec ses photos (1 à 4 photos). " +
+                    "Le producteur peut définir un seuil d'alerte personnalisé pour recevoir une notification quand le stock atteint ce niveau. " +
+                    "**IMPORTANT:** Pour ajouter plusieurs photos, sélectionnez le champ 'photos' plusieurs fois dans Swagger en cliquant sur 'Add string item' ou utilisez Postman/Bruno en ajoutant plusieurs fichiers avec la même clé 'photos'."
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Produit ajouté avec succès"),
@@ -145,6 +150,7 @@ public class ProducteurController {
             @RequestPart(value = "quantite") String quantite,
             @RequestPart(value = "categorieId") String categorieId,
             @RequestPart(value = "estBio", required = false) String estBio,
+            @RequestPart(value = "seuilAlerte", required = false) String seuilAlerte,
             @Parameter(
                     description = "Photos du produit (minimum 1, maximum 4). Pour ajouter plusieurs fichiers, sélectionnez ce champ plusieurs fois.",
                     required = true,
@@ -164,11 +170,18 @@ public class ProducteurController {
         float prixUnitaireFloat;
         int quantiteInt;
         int categorieIdInt;
+        int seuilAlerteInt = 10; // Valeur par défaut
 
         try {
             prixUnitaireFloat = Float.parseFloat(prixUnitaire);
             quantiteInt = Integer.parseInt(quantite);
             categorieIdInt = Integer.parseInt(categorieId);
+            if (seuilAlerte != null && !seuilAlerte.trim().isEmpty()) {
+                seuilAlerteInt = Integer.parseInt(seuilAlerte);
+                if (seuilAlerteInt < 0) {
+                    return ResponseEntity.badRequest().body("Le seuil d'alerte doit être positif ou nul");
+                }
+            }
         } catch (NumberFormatException e) {
             return ResponseEntity.badRequest().body("Format de nombre invalide");
         }
@@ -221,6 +234,9 @@ public class ProducteurController {
             produit.setEstBio(false);
         }
 
+        // Définir le seuil d'alerte (par défaut 10 si non fourni)
+        produit.setSeuilAlerte(seuilAlerteInt);
+
         // Associer la catégorie
         Categorie categorie = new Categorie();
         categorie.setId(categorieIdInt);
@@ -242,6 +258,54 @@ public class ProducteurController {
             @Parameter(description = "ID du producteur", required = true)
             @PathVariable int producteurId) {
         List<Produit> produits = produitService.listerLesProduits(producteurId);
+        return ResponseEntity.ok(produits);
+    }
+
+    @GetMapping(path = "/{producteurId}/produit/en-stock")
+    @Operation(
+            summary = "Lister les produits en stock",
+            description = "Retourne tous les produits d'un producteur ayant un stock disponible supérieur à 0"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Liste des produits en stock récupérée"),
+            @ApiResponse(responseCode = "404", description = "Producteur non trouvé")
+    })
+    public ResponseEntity<List<Produit>> listerProduitsEnStock(
+            @Parameter(description = "ID du producteur", required = true)
+            @PathVariable int producteurId) {
+        List<Produit> produits = produitService.listerProduitsEnStock(producteurId);
+        return ResponseEntity.ok(produits);
+    }
+
+    @GetMapping(path = "/{producteurId}/produit/stock-faible")
+    @Operation(
+            summary = "Lister les produits avec stock faible",
+            description = "Retourne tous les produits d'un producteur dont le stock disponible est inférieur ou égal au seuil d'alerte mais supérieur à 0"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Liste des produits avec stock faible récupérée"),
+            @ApiResponse(responseCode = "404", description = "Producteur non trouvé")
+    })
+    public ResponseEntity<List<Produit>> listerProduitsStockFaible(
+            @Parameter(description = "ID du producteur", required = true)
+            @PathVariable int producteurId) {
+        List<Produit> produits = produitService.listerProduitsStockFaible(producteurId);
+        return ResponseEntity.ok(produits);
+    }
+
+    @GetMapping(path = "/{producteurId}/produit/epuises")
+    @Operation(
+            summary = "Lister les produits épuisés",
+            description = "Retourne tous les produits d'un producteur dont le stock disponible est égal à 0"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Liste des produits épuisés récupérée"),
+            @ApiResponse(responseCode = "404", description = "Producteur non trouvé")
+    })
+    public ResponseEntity<List<Produit>> listerProduitsEpuises(
+            @Parameter(description = "ID du producteur", required = true)
+            @PathVariable int producteurId) {
+        List<Produit> produits = produitService.listerProduitsEpuises(producteurId);
         return ResponseEntity.ok(produits);
     }
     @GetMapping(path = "/{producteurId}/ventes")
@@ -280,6 +344,29 @@ public class ProducteurController {
 
         return ResponseEntity.ok(ventes);
     }
+
+    @GetMapping(path = "/{producteurId}/commandes")
+    @Operation(
+            summary = "Récupérer les commandes d'un producteur",
+            description = "Retourne toutes les commandes contenant au moins un produit du producteur, avec tous les détails (produits, consommateur, paiement, etc.)"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Commandes récupérées avec succès"),
+            @ApiResponse(responseCode = "404", description = "Producteur non trouvé")
+    })
+    public ResponseEntity<List<Commande>> getCommandesParProducteur(
+            @Parameter(description = "ID du producteur", required = true)
+            @PathVariable int producteurId) {
+
+        // Vérifier que le producteur existe
+        producteurService.recupererUnProducteur(producteurId);
+
+        // Récupérer toutes les commandes liées aux produits du producteur
+        List<Commande> commandes = commandeService.getCommandesParProducteur(producteurId);
+
+        return ResponseEntity.ok(commandes);
+    }
+
     @GetMapping(path = "/{producteurId}/produit/recherche")
     @Operation(
             summary = "Rechercher des produits d'un producteur par nom",
@@ -308,7 +395,9 @@ public class ProducteurController {
     @PutMapping(path = "/{producteurId}/produit/{produitId}", consumes = {"multipart/form-data"})
     @Operation(
             summary = "Modifier un produit avec photos",
-            description = "Permet de modifier les informations d'un produit et ses photos. **IMPORTANT:** Pour ajouter plusieurs photos, sélectionnez le champ 'photos' plusieurs fois."
+            description = "Permet de modifier les informations d'un produit et ses photos. " +
+                    "Le producteur peut modifier le seuil d'alerte pour recevoir une notification quand le stock atteint ce niveau. " +
+                    "**IMPORTANT:** Pour ajouter plusieurs photos, sélectionnez le champ 'photos' plusieurs fois."
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Produit modifié avec succès"),
@@ -327,6 +416,7 @@ public class ProducteurController {
             @RequestPart(value = "unite", required = false) String unite,
             @RequestPart(value = "quantite", required = false) String quantite,
             @RequestPart(value = "estBio", required = false) String estBio,
+            @RequestPart(value = "seuilAlerte", required = false) String seuilAlerte,
             @Parameter(
                     description = "Nouvelles photos du produit (optionnel, maximum 4). Pour plusieurs fichiers, sélectionnez ce champ plusieurs fois.",
                     content = @Content(mediaType = "multipart/form-data")
@@ -347,6 +437,8 @@ public class ProducteurController {
         produitModifie.setId(produitId);
         // Préserver la valeur existante de estBio par défaut
         produitModifie.setEstBio(produitExistant.isEstBio());
+        // Préserver la valeur existante de seuilAlerte par défaut
+        produitModifie.setSeuilAlerte(produitExistant.getSeuilAlerte());
 
         try {
             if (nom != null) produitModifie.setNom(nom);
@@ -358,6 +450,16 @@ public class ProducteurController {
             if (estBio != null && !estBio.trim().isEmpty()) {
                 produitModifie.setEstBio(Boolean.parseBoolean(estBio));
             }
+            // Mettre à jour seuilAlerte seulement si explicitement fourni
+            if (seuilAlerte != null && !seuilAlerte.trim().isEmpty()) {
+                int seuilAlerteInt = Integer.parseInt(seuilAlerte);
+                if (seuilAlerteInt < 0) {
+                    return ResponseEntity.badRequest().body("Le seuil d'alerte doit être positif ou nul");
+                }
+                produitModifie.setSeuilAlerte(seuilAlerteInt);
+            }
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest().body("Format de nombre invalide: " + e.getMessage());
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body("Format de données invalide: " + e.getMessage());
         }
@@ -409,11 +511,16 @@ public class ProducteurController {
     @PutMapping(path = "/commande/{commandeId}/statut")
     @Operation(
             summary = "Changer le statut d'une commande",
-            description = "Permet au producteur de changer le statut d'une commande (VALIDEE, REFUSEE, EN_LIVRAISON, LIVREE)"
+            description = "Permet au producteur de changer le statut d'une commande. " +
+                    "Statuts possibles : VALIDEE (accepter la commande), REFUSEE/DECLINEE (refuser avec motif), " +
+                    "EN_LIVRAISON (commande en cours de livraison), LIVREE (commande livrée). " +
+                    "Le motif de rejet est obligatoire si le statut est REFUSEE ou DECLINEE. " +
+                    "Si le statut est LIVREE, le livreurId est obligatoire et le consommateur recevra une notification " +
+                    "avec les informations du livreur et le prix de livraison."
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Statut modifié avec succès"),
-            @ApiResponse(responseCode = "403", description = "Non autorisé"),
+            @ApiResponse(responseCode = "403", description = "Non autorisé - Le producteur n'est pas propriétaire de cette commande"),
             @ApiResponse(responseCode = "404", description = "Commande non trouvée")
     })
     public ResponseEntity<Commande> changerStatutCommande(
@@ -421,12 +528,64 @@ public class ProducteurController {
             @PathVariable int commandeId,
             @Parameter(description = "ID du producteur", required = true)
             @RequestParam int producteurId,
-            @Parameter(description = "Nouveau statut (VALIDEE, REFUSEE, EN_LIVRAISON, LIVREE)", required = true)
+            @Parameter(description = "Nouveau statut : VALIDEE (accepter), REFUSEE/DECLINEE (refuser), EN_LIVRAISON, LIVREE", required = true)
             @RequestParam StatutCommande nouveauStatut,
-            @Parameter(description = "Motif de rejet (obligatoire si REFUSEE)")
-            @RequestParam(required = false) String motifRejet) {
+            @Parameter(description = "Motif de rejet (obligatoire si statut = REFUSEE ou DECLINEE)")
+            @RequestParam(required = false) String motifRejet,
+            @Parameter(description = "ID du livreur (obligatoire si statut = LIVREE)")
+            @RequestParam(required = false) Integer livreurId,
+            @Parameter(description = "Prix de la livraison (optionnel, calculé automatiquement si non fourni)")
+            @RequestParam(required = false) Double prixLivraison) {
 
-        Commande commande = commandeService.changerStatutCommande(commandeId, producteurId, nouveauStatut, motifRejet);
+        Commande commande = commandeService.changerStatutCommande(commandeId, producteurId, nouveauStatut, motifRejet, livreurId, prixLivraison);
+        return ResponseEntity.ok(commande);
+    }
+
+    @GetMapping(path = "/{producteurId}/livreurs/disponibles")
+    @Operation(
+            summary = "Récupérer les livreurs disponibles",
+            description = "Retourne la liste des livreurs disponibles pour la livraison des commandes"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Liste des livreurs disponibles récupérée"),
+            @ApiResponse(responseCode = "404", description = "Producteur non trouvé")
+    })
+    public ResponseEntity<List<LivreurResponseDTO>> getLivreursDisponibles(
+            @Parameter(description = "ID du producteur", required = true)
+            @PathVariable int producteurId) {
+
+        // Vérifier que le producteur existe
+        producteurService.recupererUnProducteur(producteurId);
+
+        // Récupérer les livreurs disponibles
+        List<LivreurResponseDTO> livreurs = livreurService.recupererLivreursDisponibles();
+
+        return ResponseEntity.ok(livreurs);
+    }
+
+    @PutMapping(path = "/commande/{commandeId}/livreur")
+    @Operation(
+            summary = "Assigner un livreur à une commande",
+            description = "Permet au producteur d'assigner un livreur disponible à une commande pour la livraison. " +
+                    "Le consommateur recevra une notification avec les informations du livreur et le prix de livraison."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Livreur assigné avec succès"),
+            @ApiResponse(responseCode = "400", description = "Livreur non disponible"),
+            @ApiResponse(responseCode = "403", description = "Non autorisé - Le producteur n'est pas propriétaire de cette commande"),
+            @ApiResponse(responseCode = "404", description = "Commande ou livreur non trouvé")
+    })
+    public ResponseEntity<Commande> assignerLivreur(
+            @Parameter(description = "ID de la commande", required = true)
+            @PathVariable int commandeId,
+            @Parameter(description = "ID du producteur", required = true)
+            @RequestParam int producteurId,
+            @Parameter(description = "ID du livreur à assigner", required = true)
+            @RequestParam int livreurId,
+            @Parameter(description = "Prix de la livraison (optionnel, calculé automatiquement si non fourni)")
+            @RequestParam(required = false) Double prixLivraison) {
+
+        Commande commande = commandeService.assignerLivreurACommande(commandeId, producteurId, livreurId, prixLivraison);
         return ResponseEntity.ok(commande);
     }
 
