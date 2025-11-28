@@ -233,6 +233,53 @@ public class MessageService {
         return 0;
     }
 
+    /**
+     * Récupère toutes les conversations d'un utilisateur basées sur les messages réels.
+     * Retourne une liste de maps contenant les informations des autres utilisateurs avec qui l'utilisateur a échangé.
+     */
+    public List<java.util.Map<String, Object>> getAllConversationsByUserId(int userId) {
+        List<Message> allMessages = messageRepository.findAllMessagesByUserId(userId);
+        
+        // Créer un map pour stocker les conversations uniques (par ID d'autre utilisateur)
+        java.util.Map<Integer, java.util.Map<String, Object>> conversationsMap = new java.util.HashMap<>();
+        
+        for (Message message : allMessages) {
+            Utilisateur otherUser;
+            if (message.getSender().getId() == userId) {
+                otherUser = message.getReceiver();
+            } else {
+                otherUser = message.getSender();
+            }
+            
+            int otherUserId = otherUser.getId();
+            
+            // Si cette conversation n'existe pas encore, la créer
+            if (!conversationsMap.containsKey(otherUserId)) {
+                java.util.Map<String, Object> conversation = new java.util.HashMap<>();
+                conversation.put("consommateurId", otherUser instanceof Consommateur ? otherUser.getId() : null);
+                conversation.put("producteurId", otherUser instanceof Producteur ? otherUser.getId() : null);
+                conversation.put("nomConsommateur", otherUser instanceof Consommateur ? 
+                    otherUser.getNom() + " " + otherUser.getPrenom() : null);
+                conversation.put("nomProducteur", otherUser instanceof Producteur ? 
+                    otherUser.getNom() + " " + otherUser.getPrenom() : null);
+                conversation.put("dateDernierMessage", message.getTimestamp());
+                conversation.put("dernierMessage", message.getContent());
+                conversationsMap.put(otherUserId, conversation);
+            } else {
+                // Mettre à jour la date du dernier message si ce message est plus récent
+                java.util.Map<String, Object> existingConversation = conversationsMap.get(otherUserId);
+                LocalDateTime existingDate = (LocalDateTime) existingConversation.get("dateDernierMessage");
+                if (message.getTimestamp() != null && 
+                    (existingDate == null || message.getTimestamp().isAfter(existingDate))) {
+                    existingConversation.put("dateDernierMessage", message.getTimestamp());
+                    existingConversation.put("dernierMessage", message.getContent());
+                }
+            }
+        }
+        
+        return new java.util.ArrayList<>(conversationsMap.values());
+    }
+
     // ========== Méthodes privées utilitaires ==========
 
     private Utilisateur findUserById(int id) {

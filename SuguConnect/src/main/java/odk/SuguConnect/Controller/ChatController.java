@@ -242,6 +242,18 @@ public class ChatController {
     }
     
     @Operation(
+        summary = "Récupérer toutes les conversations d'un producteur basées sur les messages",
+        description = "Récupère toutes les conversations d'un producteur en se basant sur les messages réels (envoyés et reçus)."
+    )
+    @ApiResponse(responseCode = "200", description = "Conversations récupérées avec succès")
+    @GetMapping("/conversations/producteur/{producteurId}/messages")
+    public ResponseEntity<List<Map<String, Object>>> getConversationsProducteurFromMessages(
+            @Parameter(description = "ID du producteur") @PathVariable Long producteurId) {
+        List<Map<String, Object>> conversations = messageService.getAllConversationsByUserId(producteurId.intValue());
+        return ResponseEntity.ok(conversations);
+    }
+    
+    @Operation(
         summary = "Marquer un message comme lu",
         description = "Marque un message spécifique comme lu."
     )

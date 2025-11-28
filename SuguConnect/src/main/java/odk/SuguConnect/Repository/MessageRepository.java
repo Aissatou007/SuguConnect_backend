@@ -17,6 +17,11 @@ public interface MessageRepository extends JpaRepository<Message, Integer> {
            "ORDER BY m.timestamp ASC")
     List<Message> findConversationBetweenUsers(@Param("user1") Utilisateur user1, @Param("user2") Utilisateur user2);
     
+    @Query("SELECT m FROM Message m WHERE " +
+           "(m.sender.id = :userId OR m.receiver.id = :userId) " +
+           "ORDER BY m.timestamp DESC")
+    List<Message> findAllMessagesByUserId(@Param("userId") int userId);
+    
     List<Message> findByReceiverAndIsReadFalse(Consommateur receiver);
     
     List<Message> findByReceiverAndIsReadFalse(Producteur receiver);
