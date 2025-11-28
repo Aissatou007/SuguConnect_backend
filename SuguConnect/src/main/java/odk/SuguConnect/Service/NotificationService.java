@@ -9,6 +9,7 @@ import odk.SuguConnect.Repository.NotificationRepository;
 import odk.SuguConnect.Repository.UtilisateurRepository;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -57,6 +58,15 @@ public class NotificationService {
     @Transactional
     public Notification creerNotification(int destinataireId, TypeMessage typeMessage, String message) {
         return creerNotification(destinataireId, typeMessage, message, null, 168);
+    }
+
+    /**
+     * Créer une notification dans une transaction séparée (pour ne pas bloquer la transaction principale)
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public Notification creerNotificationAsync(int destinataireId, TypeMessage typeMessage, 
+                                               String message, String action, int dureeVieHeures) {
+        return creerNotification(destinataireId, typeMessage, message, action, dureeVieHeures);
     }
 
     /**

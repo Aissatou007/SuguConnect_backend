@@ -31,7 +31,10 @@ public enum TypeMessage {
     TEXTE,
     IMAGE,
     VOCAL,
-    DOCUMENT;
+    DOCUMENT,
+    
+    // Notification de nouveau message
+    NOUVEAU_MESSAGE("Nouveau message", "Vous avez reçu un nouveau message");
 
     private final String titre;
     private final String description;

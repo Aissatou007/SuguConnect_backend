@@ -31,3 +31,9 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Scripts de correction (contiennent des secrets) ###
+fix-secret*.ps1
+fix-secret*.sh
+fix-commit*.ps1
+fix-commit*.sh

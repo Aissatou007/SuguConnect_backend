@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import odk.SuguConnect.Entity.Message;
+import odk.SuguConnect.Mapper.MessageMapper;
 import odk.SuguConnect.Service.MessageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -14,16 +15,19 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/messages")
 @CrossOrigin(origins = "*")
 public class MessageController {
     private final MessageService messageService;
+    private final MessageMapper messageMapper;
 
     @Autowired
-    public MessageController(MessageService messageService) {
+    public MessageController(MessageService messageService, MessageMapper messageMapper) {
         this.messageService = messageService;
+        this.messageMapper = messageMapper;
     }
 
     @PostMapping
@@ -248,8 +252,42 @@ public class MessageController {
             
             List<Message> messages = messageService.getConversation(userId1Int, userId2Int);
             System.out.println("Messages trouvés: " + messages.size());
+            
+            // Convertir les messages en format JSON simple pour le mobile
+            List<Map<String, Object>> messageDTOs = messages.stream()
+                .map(msg -> {
+                    Map<String, Object> dto = new HashMap<>();
+                    dto.put("id", msg.getIdMessage());
+                    dto.put("idMessage", msg.getIdMessage()); // Alias pour compatibilité
+                    dto.put("content", msg.getContent());
+                    dto.put("contenu", msg.getContent()); // Alias pour compatibilité
+                    dto.put("type", msg.getType() != null ? msg.getType().name() : "TEXT");
+                    dto.put("typeMessage", msg.getType() != null ? msg.getType().name() : "TEXT"); // Alias
+                    dto.put("timestamp", msg.getTimestamp() != null ? msg.getTimestamp().toString() : null);
+                    dto.put("dateEnvoi", msg.getTimestamp() != null ? msg.getTimestamp().toString() : null); // Alias
+                    dto.put("filePath", msg.getFilePath());
+                    dto.put("cheminFichier", msg.getFilePath()); // Alias
+                    dto.put("isRead", msg.isRead());
+                    dto.put("lu", msg.isRead()); // Alias
+                    dto.put("senderId", msg.getSender() != null ? msg.getSender().getId() : null);
+                    dto.put("expediteurId", msg.getSender() != null ? msg.getSender().getId() : null); // Alias
+                    dto.put("receiverId", msg.getReceiver() != null ? msg.getReceiver().getId() : null);
+                    dto.put("destinataireId", msg.getReceiver() != null ? msg.getReceiver().getId() : null); // Alias
+                    if (msg.getSender() != null) {
+                        dto.put("senderName", msg.getSender().getNom() + " " + msg.getSender().getPrenom());
+                        dto.put("nomExpediteur", msg.getSender().getNom() + " " + msg.getSender().getPrenom()); // Alias
+                    }
+                    if (msg.getReceiver() != null) {
+                        dto.put("receiverName", msg.getReceiver().getNom() + " " + msg.getReceiver().getPrenom());
+                        dto.put("nomDestinataire", msg.getReceiver().getNom() + " " + msg.getReceiver().getPrenom()); // Alias
+                    }
+                    return dto;
+                })
+                .collect(Collectors.toList());
+            
+            System.out.println("Messages convertis en DTOs: " + messageDTOs.size());
             System.out.println("=== Fin getConversation ===");
-            return ResponseEntity.ok(messages);
+            return ResponseEntity.ok(messageDTOs);
         } catch (jakarta.persistence.EntityNotFoundException e) {
             System.out.println("=== ERREUR getConversation (EntityNotFound) ===");
             System.out.println("Erreur: " + e.getMessage());

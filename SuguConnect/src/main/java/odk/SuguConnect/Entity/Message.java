@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
 public class Message {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id_message")
+    @Column(name = "id") // Essayer avec 'id' d'abord, MessageTableFixer corrigera si nécessaire
     private int idMessage;
     
     @ManyToOne

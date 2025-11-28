@@ -5,10 +5,12 @@ import lombok.RequiredArgsConstructor;
 import odk.SuguConnect.Entity.Consommateur;
 import odk.SuguConnect.Entity.Message;
 import odk.SuguConnect.Entity.Producteur;
+import odk.SuguConnect.Enums.TypeMessage;
 import odk.SuguConnect.Interface.Utilisateur;
 import odk.SuguConnect.Repository.ConsommateurRepository;
 import odk.SuguConnect.Repository.MessageRepository;
 import odk.SuguConnect.Repository.ProducteurRepository;
+import odk.SuguConnect.Service.NotificationService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -27,6 +29,7 @@ public class MessageService {
     private final MessageRepository messageRepository;
     private final ConsommateurRepository consommateurRepository;
     private final ProducteurRepository producteurRepository;
+    private final NotificationService notificationService;
     private final Path fileStorageLocation = Paths.get("uploads/messages").toAbsolutePath().normalize();
 
     @Transactional
@@ -70,6 +73,32 @@ public class MessageService {
             Message savedMessage = messageRepository.save(message);
             System.out.println("Message après sauvegarde - isRead: " + savedMessage.isRead());
             System.out.println("Message sauvegardé avec ID: " + savedMessage.getIdMessage());
+            
+            // Envoyer une notification au destinataire dans une transaction séparée (pour ne pas bloquer l'envoi du message)
+            // Utiliser INFO_SYSTEME car NOUVEAU_MESSAGE n'existe pas encore dans l'ENUM de la base de données
+            try {
+                String senderName = sender.getNom() + " " + sender.getPrenom();
+                String notificationMessage = senderName + " vous a envoyé un message: " + 
+                    (content.length() > 50 ? content.substring(0, 50) + "..." : content);
+                String action = "/chat/" + senderId; // Action pour ouvrir le chat
+                
+                // Utiliser creerNotificationAsync pour isoler la transaction
+                notificationService.creerNotificationAsync(
+                    receiverId, 
+                    TypeMessage.INFO_SYSTEME, 
+                    notificationMessage, 
+                    action,
+                    168 // 7 jours
+                );
+                System.out.println("Notification envoyée au destinataire ID: " + receiverId);
+            } catch (Exception e) {
+                System.out.println("⚠️ Erreur lors de l'envoi de la notification: " + e.getMessage());
+                System.out.println("⚠️ Type d'erreur: " + e.getClass().getSimpleName());
+                e.printStackTrace();
+                // Ne pas faire échouer l'envoi du message si la notification échoue
+                // L'erreur est loggée mais n'interrompt pas la transaction du message
+            }
+            
             System.out.println("=== Fin sendMessage ===");
             return savedMessage;
         } catch (Exception e) {
