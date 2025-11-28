@@ -210,24 +210,32 @@ public class MessageService {
         System.out.println("=== Recherche utilisateur ID: " + id + " ===");
         
         // Vérifier d'abord dans le repository des consommateurs
-        Consommateur consommateur = consommateurRepository.findById(id).orElse(null);
-        if (consommateur != null) {
-            System.out.println("Consommateur trouvé avec ID: " + id);
-            return consommateur;
+        try {
+            Consommateur consommateur = consommateurRepository.findById(id).orElse(null);
+            if (consommateur != null) {
+                System.out.println("✅ Consommateur trouvé avec ID: " + id + ", Nom: " + consommateur.getNom() + " " + consommateur.getPrenom());
+                return consommateur;
+            }
+            System.out.println("❌ Consommateur non trouvé avec ID: " + id);
+        } catch (Exception e) {
+            System.out.println("⚠️ Erreur lors de la recherche du consommateur ID " + id + ": " + e.getMessage());
         }
-        System.out.println("Consommateur non trouvé avec ID: " + id);
         
         // Ensuite dans le repository des producteurs
-        Producteur producteur = producteurRepository.findById(id).orElse(null);
-        if (producteur != null) {
-            System.out.println("Producteur trouvé avec ID: " + id);
-            return producteur;
+        try {
+            Producteur producteur = producteurRepository.findById(id).orElse(null);
+            if (producteur != null) {
+                System.out.println("✅ Producteur trouvé avec ID: " + id + ", Nom: " + producteur.getNom() + " " + producteur.getPrenom());
+                return producteur;
+            }
+            System.out.println("❌ Producteur non trouvé avec ID: " + id);
+        } catch (Exception e) {
+            System.out.println("⚠️ Erreur lors de la recherche du producteur ID " + id + ": " + e.getMessage());
         }
-        System.out.println("Producteur non trouvé avec ID: " + id);
         
         // Vérifier si l'ID existe dans la table utilisateur (peut-être un autre type d'utilisateur)
-        System.out.println("Aucun utilisateur trouvé (ni consommateur ni producteur) avec ID: " + id);
-        throw new EntityNotFoundException("Utilisateur introuvable avec ID: " + id + ". Vérifiez que l'utilisateur existe dans la base de données.");
+        System.out.println("❌ Aucun utilisateur trouvé (ni consommateur ni producteur) avec ID: " + id);
+        throw new EntityNotFoundException("Utilisateur introuvable avec ID: " + id + ". Vérifiez que l'utilisateur existe dans la base de données (consommateur ou producteur).");
     }
 
     private Message findMessageById(int id) {

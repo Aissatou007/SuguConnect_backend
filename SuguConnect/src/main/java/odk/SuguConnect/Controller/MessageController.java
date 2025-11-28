@@ -39,6 +39,9 @@ public class MessageController {
             @Parameter(description = "Données du message", required = true)
             @RequestBody Map<String, Object> messageData) {
         
+        int senderId = 0;
+        int receiverId = 0;
+        
         try {
             System.out.println("=== Début sendMessage ===");
             System.out.println("Données reçues: " + messageData);
@@ -63,9 +66,6 @@ public class MessageController {
             }
             
             // Conversion sécurisée des IDs (gère Integer, Number, etc.)
-            int senderId;
-            int receiverId;
-            
             try {
                 if (senderIdObj instanceof Number) {
                     senderId = ((Number) senderIdObj).intValue();
@@ -108,14 +108,19 @@ public class MessageController {
             Map<String, String> errorResponse = new HashMap<>();
             errorResponse.put("error", e.getMessage());
             errorResponse.put("message", "L'utilisateur spécifié n'existe pas dans la base de données");
+            errorResponse.put("details", "Vérifiez que les IDs " + senderId + " et " + receiverId + " existent dans la base de données");
             return ResponseEntity.badRequest().body(errorResponse);
         } catch (Exception e) {
             System.out.println("=== ERREUR sendMessage ===");
-            System.out.println("Erreur: " + e.getMessage());
+            System.out.println("Erreur: " + e.getClass().getName() + " - " + e.getMessage());
             e.printStackTrace();
             System.out.println("=== FIN ERREUR sendMessage ===");
             Map<String, String> errorResponse = new HashMap<>();
             errorResponse.put("error", "Erreur lors de l'envoi du message: " + e.getMessage());
+            errorResponse.put("type", e.getClass().getSimpleName());
+            if (e.getCause() != null) {
+                errorResponse.put("cause", e.getCause().getMessage());
+            }
             return ResponseEntity.badRequest().body(errorResponse);
         }
     }

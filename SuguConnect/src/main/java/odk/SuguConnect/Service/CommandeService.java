@@ -224,11 +224,6 @@ public class CommandeService {
                 .orElseThrow(() -> new EntityNotFoundException("Consommateur introuvable"));
     }
     
-    private Commande findCommandeById(int id) {
-        return commandeRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Commande introuvable"));
-    }
-    
     private Panier validerPanier(Consommateur consommateur) {
         Panier panier = consommateur.getPanier();
         if (panier == null || panier.getPanierProduits().isEmpty()) {
@@ -355,8 +350,13 @@ public class CommandeService {
         panierRepository.save(panier);
     }
     
-    private Producteur getProducteurCommande(Commande commande) {
+    public Producteur getProducteurCommande(Commande commande) {
         return commande.getCommandeProduits().get(0).getProduit().getProducteur();
+    }
+    
+    public Commande findCommandeById(int commandeId) {
+        return commandeRepository.findById(commandeId)
+                .orElseThrow(() -> new EntityNotFoundException("Commande introuvable avec ID: " + commandeId));
     }
     
     private void verifierProprietaireCommande(Commande commande, int producteurId) {

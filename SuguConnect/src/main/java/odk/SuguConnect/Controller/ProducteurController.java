@@ -16,6 +16,8 @@ import odk.SuguConnect.DTO.Responses.CommandeResponseDTO;
 import odk.SuguConnect.Entity.Categorie;
 import odk.SuguConnect.Entity.Commande;
 import odk.SuguConnect.Entity.Produit;
+import odk.SuguConnect.Entity.Producteur;
+import jakarta.persistence.EntityNotFoundException;
 import odk.SuguConnect.Enums.StatutCommande;
 import odk.SuguConnect.Mapper.CommandeMapper;
 import odk.SuguConnect.Service.CommandeService;
@@ -642,24 +644,43 @@ public class ProducteurController {
             // Si l'ID du token est null, utiliser l'ID du producteur trouvé par téléphone
             Integer userIdToCheck = (tokenUserId != null) ? tokenUserId : producteur.getId();
             
-            // Vérification stricte : le producteur authentifié doit correspondre au producteurId dans l'URL
-            // OU être un admin
+            // Récupérer la commande pour vérifier son propriétaire réel
+            Commande commande;
+            try {
+                commande = commandeService.findCommandeById(commandeId);
+            } catch (EntityNotFoundException e) {
+                System.out.println("ERREUR: Commande non trouvée avec ID: " + commandeId);
+                Map<String, String> errorResponse = new HashMap<>();
+                errorResponse.put("error", "Commande introuvable avec ID: " + commandeId);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+            }
+            
+            // Obtenir le producteur réel de la commande
+            Producteur producteurCommande = commandeService.getProducteurCommande(commande);
+            int producteurCommandeId = (producteurCommande != null) ? producteurCommande.getId() : -1;
+            
+            System.out.println("DEBUG: Producteur de la commande: " + producteurCommandeId);
+            System.out.println("DEBUG: Producteur authentifié (token): " + userIdToCheck);
+            
+            // Vérification : le producteur authentifié doit être le propriétaire de la commande OU être un admin
             boolean isAdmin = producteur.getRole().name().equals("ADMIN");
-            boolean isAuthorized = userIdToCheck.equals(producteurId);
+            boolean isAuthorized = userIdToCheck.equals(producteurCommandeId);
             
             System.out.println("DEBUG: isAdmin: " + isAdmin + ", isAuthorized: " + isAuthorized);
-            System.out.println("DEBUG: Comparaison - userIdToCheck (" + userIdToCheck + ") == producteurId (" + producteurId + "): " + isAuthorized);
+            System.out.println("DEBUG: Comparaison - userIdToCheck (" + userIdToCheck + ") == producteurCommandeId (" + producteurCommandeId + "): " + isAuthorized);
             
             if (!isAdmin && !isAuthorized) {
-                System.out.println("ERREUR: Producteur " + userIdToCheck + " (authentifié) tente d'accéder à la commande du producteur " + producteurId);
-                System.out.println("DEBUG: Token user ID: " + tokenUserId + ", Producteur ID paramètre: " + producteurId);
+                System.out.println("ERREUR: Producteur " + userIdToCheck + " (authentifié) tente d'accéder à la commande du producteur " + producteurCommandeId);
                 Map<String, String> errorResponse = new HashMap<>();
-                errorResponse.put("error", "Vous n'êtes pas autorisé à modifier cette commande. Producteur authentifié: " + userIdToCheck + ", Producteur requis: " + producteurId);
+                errorResponse.put("error", "Vous n'êtes pas autorisé à modifier cette commande. Producteur authentifié: " + userIdToCheck + ", Producteur de la commande: " + producteurCommandeId);
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
             }
             
-            System.out.println("DEBUG: Autorisation accordée, appel du service");
-            Commande commande = commandeService.changerStatutCommande(commandeId, producteurId, nouveauStatut, motifRejet);
+            // Utiliser l'ID du producteur de la commande pour l'appel au service
+            int producteurIdToUse = producteurCommandeId;
+            
+            System.out.println("DEBUG: Autorisation accordée, appel du service avec producteurId: " + producteurIdToUse);
+            Commande updatedCommande = commandeService.changerStatutCommande(commandeId, producteurIdToUse, nouveauStatut, motifRejet);
             System.out.println("DEBUG: Commande mise à jour avec succès");
             return ResponseEntity.ok(commande);
         } catch (Exception e) {
